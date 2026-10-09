@@ -13,6 +13,14 @@ export function createApiApp({ env = process.env, development = false, port = 30
   const MODEL = env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1';
   const VECTOR_STORE_ID = env.OPENAI_VECTOR_STORE_ID?.trim() || '';
   const allowedOrigins = allowedOriginsFromEnv(env, port);
+  const museTalkUrl = env.VITE_MUSETALK_WS_URL?.trim() || (development ? 'ws://127.0.0.1:8765/stream' : '');
+  let museTalkOrigin = '';
+  if (museTalkUrl) {
+    try {
+      const parsed = new URL(museTalkUrl);
+      if (['ws:', 'wss:'].includes(parsed.protocol)) museTalkOrigin = parsed.origin;
+    } catch { /* Invalid addresses are ignored by CSP and fail visibly in the client. */ }
+  }
   const sessionAttempts = [];
   const knowledgeSearchAttempts = [];
   const evaluationAttempts = [];
@@ -31,7 +39,7 @@ export function createApiApp({ env = process.env, development = false, port = 30
     response.setHeader("Permissions-Policy", "microphone=(self)");
     response.setHeader(
       "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${development ? " 'unsafe-inline'" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' blob:${development ? ` ws://localhost:${PORT} ws://127.0.0.1:${PORT}` : ""}; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`
+      `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${development ? " 'unsafe-inline'" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' blob:${development ? ` ws://localhost:${PORT} ws://127.0.0.1:${PORT}` : ""}${museTalkOrigin ? ` ${museTalkOrigin}` : ''}; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`
     );
     next();
   });

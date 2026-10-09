@@ -20,7 +20,11 @@ const server = createHttpServer(app);
 let vite;
 if (development) {
   const { createServer } = await import('vite');
-  vite = await createServer({ root: ROOT, server: { middlewareMode: true, hmr: { server } }, appType: 'spa' });
+  vite = await createServer({ root: ROOT, server: {
+    middlewareMode: { server }, hmr: { server },
+    proxy: { '/musetalk': { target: 'ws://127.0.0.1:8765', ws: true,
+      rewrite: requestPath => requestPath.replace(/^\/musetalk/, '') } },
+  }, appType: 'spa' });
   app.use(vite.middlewares);
 } else {
   if (!fs.existsSync(path.join(ROOT, 'dist/index.html'))) throw new Error('빌드 파일이 없습니다. npm start로 실행하거나 npm run build를 먼저 실행하세요.');

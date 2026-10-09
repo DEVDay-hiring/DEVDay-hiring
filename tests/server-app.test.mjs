@@ -34,6 +34,13 @@ test('shared API starts without dist files or credentials; health is JSON and un
   });
 });
 
+test('CSP permits the configured MuseTalk WebSocket origin', async () => {
+  await withServer(createApiApp({ env: { VITE_MUSETALK_WS_URL: 'wss://avatar.example/stream' } }), async base => {
+    const response = await fetch(base + '/api/health');
+    assert.match(response.headers.get('content-security-policy'), /connect-src[^;]*wss:\/\/avatar\.example/);
+  });
+});
+
 test('deployed origin reaches session/search/evaluation and unrelated origin is rejected', async () => {
   const origin = 'https://frontend-web-pied-six.vercel.app';
   await withServer(createApiApp({ env: { VERCEL: '1', VERCEL_PROJECT_PRODUCTION_URL: 'frontend-web-pied-six.vercel.app' } }), async base => {

@@ -27,6 +27,8 @@
 .feedback-button { border: 0; background: transparent; color: #2563eb; padding: 14px 0 0; font-size: 13px; font-weight: 700; }
 .call-video.mvp-video { left: 438px; top: 150px; width: 950px; height: 620px; border: 1px solid #fff; border-radius: 24px; background: radial-gradient(ellipse at 48% 25%, #f3f8ff, #cedfff 65%, #b5cbed); box-shadow: 0 18px 70px #20468116; }
 .call-video.mvp-video .mvp-portrait { position: absolute; width: 680px; height: 880px; left: 130px; top: -4px; object-fit: contain; }
+.call-video.mvp-video .mvp-lipsync { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; }
+.call-video.mvp-video.has-lipsync .mvp-lipsync { opacity: 1; }
 .mvp-video.is-speaking { box-shadow: 0 0 0 3px #73a0ff, 0 18px 70px #20468125; }
 .mvp-video-label { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 800; color: #24416c; letter-spacing: 1px; }
 .mvp-video-label > span:last-child { margin-left: auto; padding: 8px 12px; background: #ffffffc9; border-radius: 8px; font-size: 11px; letter-spacing: 1.6px; }

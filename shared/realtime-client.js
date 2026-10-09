@@ -5,7 +5,7 @@ import { SpeechCapture } from './speech-capture.js';
 const initial = () => ({ status: 'idle', connected: false, micMuted: false, textOnly: false,
   error: '', needsPlayback: false, messages: [], sources: [], searchCount: 0, logs: [],
   startedAt: null, durationSeconds: 0, connectionMs: null, latencyMs: null, turns: 0,
-  voiceStatus: 'idle', voiceNotice: '', voiceBackend: '', voiceProgress: '', speechCue: null });
+  voiceStatus: 'idle', voiceNotice: '', voiceBackend: '', voiceProgress: '', videoActive: false, speechCue: null });
 
 // Transport/UI adapter; Conversation retains Voice_agent's tested turn isolation.
 export class RealtimeClient {
@@ -23,6 +23,7 @@ export class RealtimeClient {
     this.audio = node;
     this.voice?.attachAudio(node);
   };
+  attachVideo = node => this.voice?.attachVideo?.(node);
   log = event => {
     this.update({ logs: [...this.snapshot.logs, { type: event.type, time: new Date().toLocaleTimeString(),
       detail: event.error?.message || event.reason || '' }].slice(-60) });
@@ -58,6 +59,7 @@ export class RealtimeClient {
       backend: voiceBackend => { if (current()) this.update({ voiceBackend }); },
       progress: voiceProgress => { if (current()) this.update({ voiceProgress }); },
       playbackBlocked: needsPlayback => { if (current()) this.update({ needsPlayback }); },
+      videoActive: videoActive => { if (current()) this.update({ videoActive }); },
       playback: speechCue => {
         if (!current()) return;
         this.update({ speechCue });
@@ -72,6 +74,7 @@ export class RealtimeClient {
         }
       },
     });
+    void this.voice?.resume();
     this.abort = new AbortController();
     const signal = this.abort.signal;
     const began = performance.now();
@@ -274,13 +277,13 @@ export class RealtimeClient {
     const last = [...this.snapshot.messages].reverse().find(m => m.role === 'assistant');
     this.update({ messages: this.snapshot.messages.map(m => m.role === 'assistant' && (m.partial || (wasSpeaking && m.id === last?.id)) ? { ...m, interrupted: true, partial: false } : m) });
   }
-  fail(error) { this.release(); this.update({ connected: false, status: 'error', error, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '', speechCue: null }); }
+  fail(error) { this.release(); this.update({ connected: false, status: 'error', error, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '', videoActive: false, speechCue: null }); }
   stop() {
     if (this.capture) { this.update({ evaluationAudio: this.capture.finish() }); this.capture = null; }
     const lastAssistant = [...this.snapshot.messages].reverse().find(m => m.role === 'assistant');
     const interrupted = this.controller?.playing || lastAssistant?.partial;
     const messages = this.snapshot.messages.map(m => interrupted && m.id === lastAssistant?.id ? { ...m, interrupted: true, partial: false } : m);
-    this.release(); this.update({ connected: false, status: 'ended', messages, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '', speechCue: null }); return this.snapshot;
+    this.release(); this.update({ connected: false, status: 'ended', messages, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '', videoActive: false, speechCue: null }); return this.snapshot;
   }
   release() {
     this.bufferedText.clear(); this.ignoredVoiceItems.clear();

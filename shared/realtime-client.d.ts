@@ -9,13 +9,14 @@ export type Snapshot = {
   startedAt: number | null; durationSeconds: number; connectionMs: number | null; latencyMs: number | null; turns: number;
   evaluationAudio?: Promise<{ audio: AudioSample | null; notice: string }>;
   recordingNotice?: string;
-  voiceStatus: string; voiceNotice: string; voiceBackend: string; voiceProgress: string;
+  voiceStatus: string; voiceNotice: string; voiceBackend: string; voiceProgress: string; videoActive: boolean;
   speechCue: SpeechCue;
 };
 export type SpeechAdapter = {
   readonly busy: boolean;
   attachAudio(node: HTMLAudioElement | null): void;
-  configure(mode: string, hooks: { status(value: string): void; notice(value: string): void; backend(value: string): void; progress(value: string): void; playbackBlocked(value: boolean): void; playbackStarted(): void; playback(value: SpeechCue): void }): void;
+  attachVideo?(node: HTMLCanvasElement | null): void;
+  configure(mode: string, hooks: { status(value: string): void; notice(value: string): void; backend(value: string): void; progress(value: string): void; playbackBlocked(value: boolean): void; playbackStarted(): void; playback(value: SpeechCue): void; videoActive(value: boolean): void }): void;
   append(itemId: string, responseId: string, delta: string): void;
   completeItem(itemId: string, responseId: string, text: string): void;
   finish(responseId: string): void; interrupt(): void; dispose(): void; resume(): Promise<void>;
@@ -25,6 +26,7 @@ export class RealtimeClient {
   getSnapshot: () => Snapshot;
   subscribe: (listener: () => void) => () => void;
   attachAudio: (node: HTMLAudioElement | null) => void;
+  attachVideo: (node: HTMLCanvasElement | null) => void;
   start(config: Config, textOnly?: boolean): Promise<void>;
   stop(): Snapshot;
   text(text: string, prompted?: boolean): boolean;

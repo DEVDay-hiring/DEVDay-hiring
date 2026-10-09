@@ -47,7 +47,7 @@ OPENAI_VECTOR_STORE_ID=
 - `OPENAI_VECTOR_STORE_ID`: 자신의 OpenAI 계정에 자료를 업로드한 Vector Store ID입니다. 다른 프로젝트의 ID를 기본값으로 사용하지 않습니다.
 - 키가 없으면 화면은 열리지만 실제 대화 시작 시 설정 안내가 나타납니다.
 - Vector Store ID가 없으면 일반 대화는 가능하며, 자료 검색 시 설정 안내가 나타납니다.
-- 기존 Google TTS 키와 외부 대화·아바타 서버 주소는 사용하지 않습니다. 마이크 인식과 답변 생성은 OpenAI Realtime, 답변 음성은 브라우저 Piper가 담당합니다.
+- 마이크 인식과 답변 생성은 OpenAI Realtime, 답변 음성은 브라우저 Piper가 담당합니다. MuseTalk 서버가 실행 중이면 합성 음성을 WebSocket으로 보내 립싱크 영상을 표시합니다.
 
 서버는 환경변수 → `.env.local` → `.env` 순서로 설정을 읽습니다. 상세 모델·포트 설정은 `.env.example`에 있습니다.
 루트 프로젝트는 `Final` 디렉터리 없이 실행할 수 있습니다. `Final/`은 참고용으로 Git 추적에서 제외합니다.
@@ -93,8 +93,29 @@ Vercel Functions의 평가 캐시와 요청 제한은 실행 인스턴스의 메
 ## Piper 트럼프 음성
 
 실제 대화 화면의 OpenAI TTS를 로컬 `piper_trump_inference`의 ONNX 모델로 교체했습니다.
-흐름은 **마이크 → OpenAI Realtime(STT·답변 텍스트·RAG) → 브라우저 Piper → 스피커**입니다.
-Google TTS 키나 별도 GPU 추론 서버를 사용하지 않습니다.
+흐름은 **마이크 → OpenAI Realtime(STT·답변 텍스트·RAG) → 브라우저 Piper → MuseTalk 영상·음성 → 스피커**입니다. MuseTalk 연결에 실패하면 Piper 음성으로 계속합니다.
+Google TTS 키는 사용하지 않습니다. 립싱크에는 별도의 MuseTalk GPU 서버가 필요합니다.
+
+### MuseTalk 립싱크 연결
+
+같은 작업 공간의 `../lip-sync-service` 스트림 서버를 MuseTalk Python 3.10/CUDA 환경에서 실행합니다.
+공식 MuseTalk 체크아웃, `models/musetalkV15`, `models/whisper`, 트럼프 아바타 영상이 필요합니다.
+
+```bash
+cd ../lip-sync-service
+python -m pip install -r requirements-streaming.txt
+python -m src.realtime.stream_server --repo /path/to/MuseTalk --video samples/input_video/avatar_25fps.mp4 --host 127.0.0.1 --port 8765
+```
+
+로컬 개발 앱은 `ws://127.0.0.1:8765/stream`에 자동 연결합니다.
+원격 작업 공간이나 포트 포워딩으로 앱을 열 때는 `VITE_MUSETALK_WS_URL=/musetalk/stream`을 설정하세요.
+`npm run dev`의 WebSocket 중계가 앱과 같은 주소에서 작업 공간의 `127.0.0.1:8765`에 연결합니다.
+다른 주소를 쓸 때는
+앱의 `.env.local`에 `VITE_MUSETALK_WS_URL=ws://HOST:PORT/stream`을 설정하고 앱을 재시작합니다.
+HTTPS 배포에서는 브라우저가 접근할 수 있는 `wss://` 주소가 필요하며, 이 변수를 Vite 빌드 환경과
+API 서버 환경에 모두 지정해야 합니다. 서버가 없거나 응답하지 않으면 영상 대신 정적 이미지와
+Piper 음성으로 대화를 이어갑니다. MuseTalk 서버는 현재 한 발화씩 처리합니다.
+동봉된 트럼프 샘플 영상에는 방송 자막과 화면 녹화 표시가 포함되어 있으므로 최종 시연에는 깨끗한 25fps 아바타 영상으로 교체하세요.
 
 필요한 로컬 파일:
 
@@ -150,7 +171,7 @@ ONNX Runtime Web 1.30.0과 `@diffusionstudio/piper-wasm` 1.0.0을 사용합니�
 - 마이크를 연 상태에서 WebRTC로 실시간 음성 대화, 텍스트 입력, 사용자·AI 자막.
 - AI가 말할 때 끼어들면 재생과 이전 응답·자료 검색을 취소합니다.
 - 업로드 자료를 Vector Store로 검색하고 참고 자료 탭에 표시합니다. 실시간 웹 뉴스 검색은 없습니다.
-- 화면의 인물은 정적 이미지이며, 립싱크 영상과 실제 인물의 음성 복제는 제공하지 않습니다.
+- MuseTalk GPU 서버가 연결되면 발화 중 립싱크 영상을 표시하며, 그렇지 않으면 정적 인물 이미지를 표시합니다. 실제 인물의 음성 복제는 제공하지 않습니다.
 - 연결 실패·자동 재생 차단·자료 검색 실패 안내와 재시도.
 - 종료하면 발음·유창성·정확성·복잡성을 실제 사용자 발화로 평가합니다. 텍스트만 있으면 발음·유창성은 평가하지 않습니다.
 - 자료가 부족하거나 평가가 실패하면 임의의 점수를 표시하지 않습니다. 피드백은 AI 코칭용이며 공인 시험 점수가 아닙니다.

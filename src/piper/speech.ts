@@ -1,5 +1,6 @@
 import { SpeechQueue } from '../../shared/speech-queue.js'
 import { PiperClient, type Result } from './client'
+import { MuseTalkClient } from '../lipsync/client'
 
 type Hooks = {
   status(status: string): void
@@ -9,9 +10,10 @@ type Hooks = {
   playbackBlocked(blocked: boolean): void
   playbackStarted(): void
   playback(cue: SpeechCue | null): void
+  videoActive(active: boolean): void
 }
 const noop = () => {}
-const empty: Hooks = { status: noop, notice: noop, backend: noop, progress: noop, playbackBlocked: noop, playbackStarted: noop, playback: noop }
+const empty: Hooks = { status: noop, notice: noop, backend: noop, progress: noop, playbackBlocked: noop, playbackStarted: noop, playback: noop, videoActive: noop }
 export type SpeechCue = { itemId: string; responseId: string; text: string; start: number; end: number; progress: number; completed: { itemId: string; start: number; end: number }[] }
 
 // Realtime handles microphone input and text; this adapter owns all audible output.
@@ -20,6 +22,11 @@ export class PiperSpeech {
   private audio: HTMLAudioElement | null = null
   private url?: string
   private cancelPlayback?: () => void
+  private museTalk = new MuseTalkClient(
+    import.meta.env.VITE_MUSETALK_WS_URL?.trim() || (import.meta.env.DEV ? 'ws://127.0.0.1:8765/stream' : ''),
+    active => this.hooks.videoActive(active),
+  )
+  private museTalkEnabled = Boolean(import.meta.env.VITE_MUSETALK_WS_URL?.trim() || import.meta.env.DEV)
   private engine = new PiperClient(event => {
     if (event.type === 'backend') { this.hooks.backend(event.backend); if (event.fallbackReason) this.hooks.notice(event.fallbackReason) }
     if (event.type === 'fallback') this.hooks.notice(event.message)
@@ -39,28 +46,56 @@ export class PiperSpeech {
   })
   get busy() { return this.queue.busy }
   attachAudio(node: HTMLAudioElement | null) { if (!node) this.stopAudio(); this.audio = node }
-  configure(mode: string, hooks: Hooks) { this.hooks = hooks; this.engine.reset(); this.queue.configure(mode) }
+  attachVideo(node: HTMLCanvasElement | null) { this.museTalk.attachCanvas(node) }
+  configure(mode: string, hooks: Hooks) { this.hooks = hooks; this.museTalkEnabled = mode !== 'off' && Boolean(import.meta.env.VITE_MUSETALK_WS_URL?.trim() || import.meta.env.DEV); this.engine.reset(); this.queue.configure(mode) }
   append(itemId: string, responseId: string, delta: string) { this.queue.append(itemId, responseId, delta) }
   completeItem(itemId: string, responseId: string, text: string) { this.queue.completeItem(itemId, responseId, text) }
   finish(responseId: string) { this.queue.finish(responseId) }
   interrupt() { this.queue.interrupt(); this.hooks.progress(''); this.hooks.playbackBlocked(false) }
-  dispose() { this.queue.dispose(); this.hooks = empty }
+  dispose() { this.queue.dispose(); this.museTalk.dispose(); this.hooks = empty }
   async resume() {
+    if (this.museTalkEnabled) {
+      try { await this.museTalk.resume(); this.hooks.playbackBlocked(false) }
+      catch { this.hooks.playbackBlocked(true) }
+    }
     if (!this.audio?.src) return
     try { await this.audio.play(); this.hooks.playbackBlocked(false) }
     catch { this.hooks.playbackBlocked(true) }
   }
   private stopAudio() {
+    this.museTalk.stop()
     this.cancelPlayback?.(); this.cancelPlayback = undefined
     if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load() }
     if (this.url) URL.revokeObjectURL(this.url)
     this.url = undefined
   }
-  private play(result: Result, current: () => boolean, started: () => void, reportProgress: (progress: number) => void): Promise<void> {
+  private async play(result: Result, current: () => boolean, started: () => void, reportProgress: (progress: number) => void): Promise<void> {
     this.stopAudio()
+    result = { ...result, pcm: normalizeSpeech(result.pcm) }
+    let began = false, progress = 0
+    const begin = () => {
+      if (!current() || began) return
+      began = true; this.hooks.playbackBlocked(false); started(); this.hooks.playbackStarted(); reportProgress(0)
+    }
+    const updateProgress = (value: number) => { progress = value; reportProgress(value) }
+    if (this.museTalkEnabled && current()) {
+      try {
+        await this.museTalk.play(result.pcm, result.sampleRate, current, begin, updateProgress)
+        return
+      } catch {
+        if (!current()) return
+        this.museTalkEnabled = false
+        this.hooks.notice('MuseTalk 영상 연결에 실패해 음성으로 대화를 이어갑니다.')
+      }
+    }
+    if (!current()) return
+    await this.playAudio(result, current, begin, updateProgress, progress)
+  }
+  private playAudio(result: Result, current: () => boolean, started: () => void, reportProgress: (progress: number) => void, from = 0): Promise<void> {
     const audio = this.audio
     if (!audio || !current()) return Promise.resolve()
-    this.url = URL.createObjectURL(new Blob([wav(normalizeSpeech(result.pcm), result.sampleRate)], { type: 'audio/wav' }))
+    const offset = Math.min(result.pcm.length - 1, Math.floor(result.pcm.length * Math.max(0, Math.min(1, from))))
+    this.url = URL.createObjectURL(new Blob([wav(result.pcm.subarray(offset), result.sampleRate)], { type: 'audio/wav' }))
     audio.srcObject = null; audio.src = this.url; audio.muted = false
     return new Promise((resolve, reject) => {
       let began = false, settled = false
@@ -76,13 +111,13 @@ export class PiperSpeech {
         if (!current() || audio.paused || audio.ended) return
         if (Number.isFinite(audio.duration) && audio.duration > 0) {
           const leadSeconds = 0.06
-          reportProgress(Math.max(0, Math.min(1, (audio.currentTime + leadSeconds) / audio.duration)))
+          reportProgress(Math.max(0, Math.min(1, from + (1 - from) * (audio.currentTime + leadSeconds) / audio.duration)))
         }
         progressFrame = requestAnimationFrame(updateProgress)
       }
       const playing = () => {
         if (!current() || began) return
-        began = true; this.hooks.playbackBlocked(false); started(); this.hooks.playbackStarted(); reportProgress(0)
+        began = true; this.hooks.playbackBlocked(false); started(); reportProgress(from)
         progressFrame = requestAnimationFrame(updateProgress)
       }
       this.cancelPlayback = ended
