@@ -5,14 +5,14 @@ import { SpeechCapture } from './speech-capture.js';
 const initial = () => ({ status: 'idle', connected: false, micMuted: false, textOnly: false,
   error: '', needsPlayback: false, messages: [], sources: [], searchCount: 0, logs: [],
   startedAt: null, durationSeconds: 0, connectionMs: null, latencyMs: null, turns: 0,
-  voiceStatus: 'idle', voiceNotice: '', voiceBackend: '', voiceProgress: '' });
+  voiceStatus: 'idle', voiceNotice: '', voiceBackend: '', voiceProgress: '', speechCue: null });
 
 // Transport/UI adapter; Conversation retains Voice_agent's tested turn isolation.
 export class RealtimeClient {
   constructor({ voice } = {}) {
     this.voice = voice;
     this.snapshot = initial(); this.listeners = new Set(); this.generation = 0;
-    this.transcribed = new Set(); this.audio = null;
+    this.transcribed = new Set(); this.audio = null; this.lastAutoMutedResponseId = null;
   }
   getSnapshot = () => this.snapshot;
   subscribe = listener => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
@@ -38,6 +38,7 @@ export class RealtimeClient {
   async start(config, textOnly = false) {
     if (this.peer || this.snapshot.status === 'connecting') return;
     this.release();
+    this.lastAutoMutedResponseId = null;
     const generation = this.generation;
     const current = () => generation === this.generation;
     this.transcribed.clear();
@@ -56,6 +57,14 @@ export class RealtimeClient {
       backend: voiceBackend => { if (current()) this.update({ voiceBackend }); },
       progress: voiceProgress => { if (current()) this.update({ voiceProgress }); },
       playbackBlocked: needsPlayback => { if (current()) this.update({ needsPlayback }); },
+      playback: speechCue => {
+        if (!current()) return;
+        this.update({ speechCue });
+        if (speechCue && speechCue.progress === 0 && speechCue.responseId !== this.lastAutoMutedResponseId) {
+          this.lastAutoMutedResponseId = speechCue.responseId;
+          this.setMicMuted(true);
+        }
+      },
       playbackStarted: () => {
         if (current() && this.stoppedSpeaking) {
           this.update({ latencyMs: Math.round(performance.now() - this.stoppedSpeaking) }); this.stoppedSpeaking = null;
@@ -212,8 +221,12 @@ export class RealtimeClient {
   }
   toggleMic() {
     if (!this.mic) return;
-    const micMuted = !this.snapshot.micMuted;
-    this.mic.getAudioTracks().forEach(t => { t.enabled = !micMuted; }); this.update({ micMuted });
+    this.setMicMuted(!this.snapshot.micMuted);
+  }
+  setMicMuted(micMuted) {
+    if (!this.mic) return;
+    this.mic.getAudioTracks().forEach(track => { track.enabled = !micMuted; });
+    this.update({ micMuted });
   }
   async playAudio() {
     if (this.voice) { await this.voice.resume(); return; }
@@ -226,13 +239,13 @@ export class RealtimeClient {
     const last = [...this.snapshot.messages].reverse().find(m => m.role === 'assistant');
     this.update({ messages: this.snapshot.messages.map(m => m.role === 'assistant' && (m.partial || (wasSpeaking && m.id === last?.id)) ? { ...m, interrupted: true, partial: false } : m) });
   }
-  fail(error) { this.release(); this.update({ connected: false, status: 'error', error, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '' }); }
+  fail(error) { this.release(); this.update({ connected: false, status: 'error', error, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '', speechCue: null }); }
   stop() {
     if (this.capture) { this.update({ evaluationAudio: this.capture.finish() }); this.capture = null; }
     const lastAssistant = [...this.snapshot.messages].reverse().find(m => m.role === 'assistant');
     const interrupted = this.controller?.playing || lastAssistant?.partial;
     const messages = this.snapshot.messages.map(m => interrupted && m.id === lastAssistant?.id ? { ...m, interrupted: true, partial: false } : m);
-    this.release(); this.update({ connected: false, status: 'ended', messages, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '' }); return this.snapshot;
+    this.release(); this.update({ connected: false, status: 'ended', messages, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '', speechCue: null }); return this.snapshot;
   }
   release() {
     this.capture?.discard(); this.capture = null;

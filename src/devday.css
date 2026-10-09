@@ -73,7 +73,7 @@
 .summary-duo { position: absolute; left: -16px; top: 558px; width: 652px; height: 522px; object-fit: cover; }
 .summary-small-speech { position: absolute; left: 78px; top: 897px; width: 281px; height: 139px; padding: 18px 26px; border-radius: 24px; background: rgba(243,247,255,.8); }
 .summary-small-speech small { display: block; color: rgba(0,0,0,.5); font-size: 16px; font-weight: 600; line-height: 1.5; }
-.summary-small-speech p { margin: 3px 0 0; font-size: 24px; font-weight: 600; line-height: 1.5; letter-spacing: -.72px; }
+.summary-small-speech p { margin: 3px 0 0; font-size: 20px; font-weight: 600; line-height: 1.3; letter-spacing: -.5px; }
 .summary-score-panel, .summary-feedback-panel, .summary-phrases-panel, .summary-recommend-panel { position: absolute; border-radius: 16px; background: linear-gradient(#e6eefb, #cadafd); }
 .summary-score-panel { left: 582px; top: 129px; width: 795px; height: 411px; }
 .summary-score-gauge { position: absolute; left: 34px; top: 17px; width: 226px; height: 226px; object-fit: cover; }
@@ -112,8 +112,6 @@
 .summary-phrase { position: relative; width: 346px; height: 74px; padding: 5px 15px; border-radius: 16px; background: #e6eefb; }
 .summary-phrase strong { display: block; font-size: 20px; font-weight: 700; line-height: 1.5; letter-spacing: -.6px; }
 .summary-phrase small { display: block; color: rgba(0,0,0,.5); font-size: 16px; font-weight: 500; line-height: 1.5; letter-spacing: -.48px; }
-.summary-phrase button { position: absolute; right: 21px; top: 21px; width: 32px; height: 32px; padding: 0; border: 0; background: none; }
-.summary-phrase button img { display: block; width: 32px; height: 32px; }
 .summary-recommend { position: absolute; left: 35px; display: flex; align-items: center; gap: 20px; width: 360px; height: 134px; padding: 0; border: 0; background: transparent; text-align: left; }
 .summary-recommend:nth-of-type(2) { top: 87px; }
 .summary-recommend:nth-of-type(3) { top: 246px; }
@@ -169,7 +167,7 @@
   .summary-duo { order: 3; width: calc(100% + 40px); height: auto; margin: 0 -20px; object-fit: contain; }
   .summary-small-speech { order: 4; width: 245px; min-height: 105px; margin-top: -120px; padding: 14px 20px; }
   .summary-small-speech small { font-size: 12px; }
-  .summary-small-speech p { font-size: 18px; }
+  .summary-small-speech p { font-size: 16px; line-height: 1.3; letter-spacing: -.3px; }
   .summary-score-panel { order: 5; min-height: 345px; padding: 16px; }
   .summary-score-gauge { left: 15px; top: 15px; width: 115px; height: 115px; }
   .summary-score-intro { left: 137px; top: 23px; right: 12px; }
@@ -201,7 +199,6 @@
   .summary-phrase { width: 100%; height: 67px; padding: 6px 12px; }
   .summary-phrase strong { font-size: 15px; }
   .summary-phrase small { font-size: 12px; }
-  .summary-phrase button { right: 12px; top: 18px; }
   .summary-recommend, .summary-recommend:nth-of-type(2), .summary-recommend:nth-of-type(3) { position: static; width: 100%; height: 104px; margin-top: 15px; gap: 15px; }
   .summary-recommend-photo { flex-basis: 100px; width: 100px; height: 100px; }
   .summary-recommend strong { font-size: 16px; }

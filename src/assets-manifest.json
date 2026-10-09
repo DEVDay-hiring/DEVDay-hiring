@@ -45,7 +45,9 @@
     "sol-hero.webp": "sol-hero.webp",
     "donald-card.webp": "devday/conversation-trump.webp",
     "elon-card.webp": "devday/summary-elon.webp",
-    "luna-card.webp": "devday/summary-luna.webp"
+    "luna-card.webp": "devday/summary-luna.webp",
+    "dooly-hero.webp": "dooly-hero.webp",
+    "elsa-hero.webp": "elsa-hero.webp"
   },
   "images": {
     "atrium-bg.webp": [
@@ -326,6 +328,35 @@
         "sol-hero.webp",
         1024,
         1536
+      ]
+    ],
+    "dooly-hero.webp": [
+      [
+        "dooly-hero-400.webp",
+        400,
+        302
+      ],
+      [
+        "dooly-hero-800.webp",
+        800,
+        603
+      ],
+      [
+        "dooly-hero.webp",
+        1444,
+        1089
+      ]
+    ],
+    "elsa-hero.webp": [
+      [
+        "elsa-hero-400.webp",
+        400,
+        813
+      ],
+      [
+        "elsa-hero.webp",
+        627,
+        1275
       ]
     ]
   }

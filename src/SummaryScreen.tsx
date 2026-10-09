@@ -2,7 +2,7 @@ import './mvp.css'
 import './assessment.css'
 import AssetImage from './AssetImage'
 import { devdayAsset } from './assets'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useEvaluation } from './evaluation'
 import AssessmentPanel from './AssessmentPanel'
 import type { Snapshot } from '../shared/realtime-client.js'
@@ -20,13 +20,6 @@ export default function SummaryScreen({ person, record, onBack, onRetry }: Props
   const userMessages = messages.filter(m => m.role === 'user')
   const words = userMessages.flatMap(m => m.text.match(/[A-Za-z]+(?:'[A-Za-z]+)?/g) || [])
   const unique = new Set(words.map(w => w.toLowerCase())).size
-  useEffect(() => () => window.speechSynthesis?.cancel(), [])
-  const speak = (text: string) => {
-    if (!window.speechSynthesis) return
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'en-US'; utterance.rate = .9
-    window.speechSynthesis.speak(utterance)
-  }
   const download = () => {
     const blob = new Blob([JSON.stringify({ persona: person.name, savedAt: new Date().toISOString(), durationSeconds: record?.durationSeconds || 0,
       messages, sources: record?.sources || [], evaluation: evaluation.result?.report || null, note: 'AI simulation. Interrupted transcripts may include unheard content. Scores are provisional AI coaching, not certified proficiency.' }, null, 2)], { type: 'application/json' })
@@ -51,7 +44,7 @@ export default function SummaryScreen({ person, record, onBack, onRetry }: Props
       <div className="mvp-review-messages">{!messages.length && <p>아직 대화 기록이 없습니다. 아래 버튼으로 시작해 보세요.</p>}{messages.map(m => <article key={m.id} className={m.role}><strong>{m.role === 'user' ? 'You' : 'Trump AI'}{m.interrupted ? ' · 발화 중단' : ''}</strong><p>{m.text}</p></article>)}</div>
       <div className="summary-actions"><button className="summary-retry" onClick={onRetry}><AssetImage src={devdayAsset('refresh.svg')} alt="" />다시 대화하기</button><button className="summary-learn" onClick={download} disabled={!messages.length}>대화 기록 저장 ↓</button></div>
     </section>
-    <section className="summary-phrases-panel mvp-phrases"><h2>다음 대화에 써보세요</h2><p className="phrase-note">회화 연습용 추천 표현 · 기기 기본 음성</p><div className="summary-phrase-list">{phrases.map(([en, ko]) => <div className="summary-phrase" key={en}><strong>{en}</strong><small>{ko}</small><button onClick={() => speak(en)} aria-label={`${en} 발음 듣기`}><AssetImage src={devdayAsset('speaker.svg')} alt="" /></button></div>)}</div></section>
+    <section className="summary-phrases-panel mvp-phrases"><h2>다음 대화에 써보세요</h2><p className="phrase-note">회화 연습용 추천 표현 · 기기 기본 음성</p><div className="summary-phrase-list">{phrases.map(([en, ko]) => <div className="summary-phrase" key={en}><strong>{en}</strong><small>{ko}</small></div>)}</div></section>
     <section className="summary-recommend-panel mvp-summary-sources"><h2>함께 살펴본 자료</h2><div>{!record?.sources.length ? <p>이번 대화에서 검색한 기사가 없습니다.</p> : record.sources.map(s => <details key={s.filename}><summary>{s.filename}</summary><p>{s.text}</p></details>)}<p className="subtle">영어 실력 평가 탭에서 발음·유창성·정확성·복잡성에 대한 피드백을 확인하세요.</p><button onClick={onBack}>다른 인물 둘러보기 →</button></div></section>
     </>}
   </>
