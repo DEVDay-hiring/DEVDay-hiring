@@ -12,7 +12,7 @@ dotenv.config({ path: path.join(ROOT, '.env'), quiet: true });
 const development = process.argv.includes('--dev');
 const PORT = Number(process.env.PORT || (development ? '5174' : '3001'));
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('PORT는 1~65535 사이의 정수여야 합니다.');
-const HOST = '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0';
 const MODEL = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1';
 const app = createApiApp({ development, port: PORT });
 const server = createHttpServer(app);
@@ -46,6 +46,7 @@ app.use((error, _request, response, _next) => {
 server.listen(PORT, HOST, () => {
   console.log(`\nHiRing · English conversation ${development ? 'development' : 'MVP'}`);
   console.log(`Open: http://localhost:${PORT}`);
+  if (HOST === '0.0.0.0') console.log(`Devbox: use the forwarded URL for port ${PORT}`);
   console.log(`Model: ${MODEL}`);
   console.log(
     process.env.OPENAI_API_KEY?.trim()
