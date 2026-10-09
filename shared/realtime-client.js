@@ -1,5 +1,5 @@
 import { getHealth } from './health.js';
-import { Conversation } from './conversation.js';
+import { Conversation, containsKorean, KOREAN_INPUT_NOTICE } from './conversation.js';
 import { SpeechCapture } from './speech-capture.js';
 
 const initial = () => ({ status: 'idle', connected: false, micMuted: false, textOnly: false,
@@ -193,7 +193,7 @@ export class RealtimeClient {
         this.transcribed.add(event.item_id); this.update({ turns: this.snapshot.turns + 1 });
       }
     }
-    if (event.type === 'conversation.item.input_audio_transcription.failed') this.update({ error: '음성 자막을 만들지 못했습니다. 원래 음성으로 답변을 시도합니다.' });
+    if (event.type === 'conversation.item.input_audio_transcription.failed') this.update({ error: '음성을 확인하지 못해 답변하지 않았어요. 영어로 다시 말씀해 주세요.' });
     if (event.type === 'conversation.item.truncated') this.update({ messages: this.snapshot.messages.map(m => m.id === event.item_id ? { ...m, interrupted: true, partial: false } : m) });
     if (event.type === 'response.done' && responseCurrent && event.response.status !== 'completed') {
       this.markInterrupted(wasSpeaking); this.voice?.interrupt(); this.update({ voiceStatus: 'idle' });
@@ -211,6 +211,7 @@ export class RealtimeClient {
   text(text, prompted = false) {
     text = text.trim().slice(0, 2000);
     if (!text || !this.snapshot.connected) return false;
+    if (containsKorean(text)) { this.update({ error: KOREAN_INPUT_NOTICE }); return false; }
     if (!this.controller.speaking) this.markInterrupted(this.voice?.busy);
     if (!this.controller.text(text)) { this.update({ error: '말씀을 마친 뒤 텍스트를 보내 주세요.' }); return false; }
     const id = 'local-' + crypto.randomUUID();

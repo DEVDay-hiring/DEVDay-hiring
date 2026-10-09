@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Conversation } from "../shared/conversation.js";
+import { Conversation, containsKorean } from "../shared/conversation.js";
 import { needsNewsSearch, normalizeKnowledgeQuery, responseOptions } from "../shared/knowledge-policy.js";
 import { normalizeConversationConfig, buildPersonaInstructions } from "../persona.mjs";
 
@@ -32,6 +32,36 @@ test("all response phases preserve session persona; no response-level instructio
   assert.equal(config.support, "english");
   assert.match(buildPersonaInstructions(config), /first-person/);
   assert.equal(normalizeConversationConfig({ level: "invalid", voice: "invalid" }).voice, "cedar");
+});
+
+test("Korean text and Korean speech are rejected without creating an answer", () => {
+  const errors = [], sent = [];
+  const c = new Conversation({ send: event => sent.push(event), search: async () => ({}), mute: () => {}, error: message => errors.push(message) });
+  assert.equal(containsKorean("Hello"), false);
+  assert.equal(containsKorean("안녕하세요"), true);
+  assert.equal(c.text("안녕하세요"), false);
+  assert.equal(sent.some(event => event.type === "conversation.item.create" || event.type === "response.create"), false);
+  c.handle({ type: "input_audio_buffer.speech_started", item_id: "ko" });
+  c.handle({ type: "conversation.item.input_audio_transcription.completed", item_id: "ko", transcript: "안녕하세요" });
+  c.handle({ type: "input_audio_buffer.speech_stopped", item_id: "ko" });
+  assert.equal(requests(sent).length, 0);
+  assert.ok(errors.length);
+  c.dispose();
+});
+
+test("failed or delayed speech transcription never falls back to answering raw audio", async () => {
+  const errors = [], sent = [];
+  const c = new Conversation({ send: event => sent.push(event), search: async () => ({}), mute: () => {}, error: message => errors.push(message) });
+  c.handle({ type: "input_audio_buffer.speech_started", item_id: "failed" });
+  c.handle({ type: "conversation.item.input_audio_transcription.failed", item_id: "failed" });
+  c.handle({ type: "input_audio_buffer.speech_stopped", item_id: "failed" });
+  assert.equal(requests(sent).length, 0);
+  c.handle({ type: "input_audio_buffer.speech_started", item_id: "delayed" });
+  c.handle({ type: "input_audio_buffer.speech_stopped", item_id: "delayed" });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  c.dispose();
+  assert.equal(requests(sent).length, 0);
+  assert.ok(errors.length);
 });
 
 test("speech silences local playback, cancels generation, clears audio and waits for user's finished turn", () => {

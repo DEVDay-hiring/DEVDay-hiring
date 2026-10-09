@@ -1,5 +1,8 @@
 import { responseOptions } from "./knowledge-policy.js";
 
+export const KOREAN_INPUT_NOTICE = "한국어 입력에는 답변하지 않아요. 영어로 입력해 주세요.";
+export const containsKorean = text => /[\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\uac00-\ud7a3\ud7b0-\ud7ff]/u.test(text || "");
+
 // One controller per WebRTC connection. Epochs make delayed transcription,
 // response events and searches unable to restart a superseded spoken turn.
 export class Conversation {
@@ -39,6 +42,10 @@ export class Conversation {
 
   text(text) {
     if (!this.alive || this.speaking) return false;
+    if (containsKorean(text)) {
+      this.error(KOREAN_INPUT_NOTICE);
+      return false;
+    }
     this.interrupt("text");
     this.voiceItem = null;
     this.send({
@@ -90,18 +97,34 @@ export class Conversation {
           this.transcriptionTimer = setTimeout(() => {
             if (!this.alive || epoch !== this.epoch || this.transcribed.has(event.item_id)) return;
             this.transcribed.add(event.item_id);
-            this.error("자막이 지연되어 음성 내용을 직접 바탕으로 응답합니다.");
-            this.queue("");
+            this.error("음성을 확인하지 못해 답변하지 않았어요. 영어로 다시 말씀해 주세요.");
+            this.status("ready");
           }, 12000);
-        } else this.flush();
+        } else {
+          this.flush();
+          if (!this.pending && !this.active && !this.queued && !this.searches.size) this.status("ready");
+        }
         break;
       }
       case "conversation.item.input_audio_transcription.completed":
+        if (event.item_id !== this.voiceItem || this.transcribed.has(event.item_id)) break;
+        clearTimeout(this.transcriptionTimer);
+        this.transcribed.add(event.item_id);
+        if (containsKorean(event.transcript)) {
+          this.error(KOREAN_INPUT_NOTICE);
+          this.status("ready");
+        } else if (event.transcript?.trim()) this.queue(event.transcript);
+        else {
+          this.error("음성을 확인하지 못해 답변하지 않았어요. 영어로 다시 말씀해 주세요.");
+          this.status("ready");
+        }
+        break;
       case "conversation.item.input_audio_transcription.failed":
         if (event.item_id !== this.voiceItem || this.transcribed.has(event.item_id)) break;
         clearTimeout(this.transcriptionTimer);
         this.transcribed.add(event.item_id);
-        this.queue(event.transcript || "");
+        this.error("음성을 확인하지 못해 답변하지 않았어요. 영어로 다시 말씀해 주세요.");
+        this.status("ready");
         break;
       case "response.created": {
         const response = event.response;
