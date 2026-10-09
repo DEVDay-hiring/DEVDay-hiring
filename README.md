@@ -47,7 +47,7 @@ OPENAI_VECTOR_STORE_ID=
 - `OPENAI_VECTOR_STORE_ID`: 자신의 OpenAI 계정에 자료를 업로드한 Vector Store ID입니다. 다른 프로젝트의 ID를 기본값으로 사용하지 않습니다.
 - 키가 없으면 화면은 열리지만 실제 대화 시작 시 설정 안내가 나타납니다.
 - Vector Store ID가 없으면 일반 대화는 가능하며, 자료 검색 시 설정 안내가 나타납니다.
-- 마이크 인식과 답변 생성은 OpenAI Realtime, 답변 음성은 브라우저 Piper가 담당합니다. MuseTalk 서버가 실행 중이면 합성 음성을 WebSocket으로 보내 립싱크 영상을 표시합니다.
+- 마이크 인식과 답변 생성은 OpenAI Realtime, 답변 음성은 브라우저 Piper가 담당합니다. 기본 립싱크는 음성 세기에 따라 로컬 입 모양 사진을 교체하며, GPU 서버가 필요하지 않습니다.
 
 서버는 환경변수 → `.env.local` → `.env` 순서로 설정을 읽습니다. 상세 모델·포트 설정은 `.env.example`에 있습니다.
 루트 프로젝트는 `Final` 디렉터리 없이 실행할 수 있습니다. `Final/`은 참고용으로 Git 추적에서 제외합니다.
@@ -94,11 +94,31 @@ Vercel Functions의 평가 캐시와 요청 제한은 실행 인스턴스의 메
 
 실제 대화 화면의 OpenAI TTS를 로컬 `piper_trump_inference`의 ONNX 모델로 교체했습니다.
 음성 흐름은 **마이크 → OpenAI Realtime(STT·답변 텍스트·RAG) → 브라우저 Piper → 스피커**입니다.
-MuseTalk는 동일한 합성 음성을 별도로 받아 영상만 표시합니다. 영상 지연이나 연결 실패로 음성을 멈추거나 재시작하지 않습니다.
-Google TTS 키는 사용하지 않습니다. 립싱크에는 별도의 MuseTalk GPU 서버가 필요합니다.
+입 모양은 동일한 합성 음성과 실제 오디오 재생 시각을 따라갑니다. 이미지 로딩이나 영상 서버 지연 때문에 음성을 멈추거나 재시작하지 않습니다.
+Google TTS 키는 사용하지 않습니다. 사진 립싱크에는 별도의 서버나 키가 필요하지 않습니다.
+
+### 사진 립싱크 (기본값)
+
+`VITE_LIPSYNC_MODE=photo`가 기본값입니다. 기존 `VITE_MUSETALK_WS_URL` 설정이 남아 있어도 사진 모드에서는 GPU 서버에 연결하거나 음성을 전송하지 않습니다.
+브라우저에서 합성 PCM의 40ms 구간별 세기를 계산하고, `audio.currentTime`에 맞춰 입 닫음·조금 열림·크게 열림의 세 사진을 표시합니다.
+과거 프레임을 쌓지 않고 현재 시각의 사진만 그리며, 무음·일시정지 시 입을 닫고 발화 종료·중단 시 기본 사진으로 돌아갑니다.
+사진이 늦게 로딩되거나 실패해도 원래 Piper 음성은 그대로 재생합니다. 이는 음량 기반 근사 표현이며 음소 인식이나 MuseTalk 영상 생성은 아닙니다.
+기존 문장별 Piper 합성 대기나 첫 모델 다운로드 지연은 별개입니다.
+
+`src/assets/photo-trump/{closed,small,open}.webp`는 제공된 25fps 영상의 164·166·170번 프레임에서 추출한 880×660 사진입니다(총 약 456KB).
+머리·눈·배경이 흔들리지 않도록 상안면을 정렬한 후 입 주변만 합성하고, 방송 자막과 플레이어 UI는 잘라냈습니다.
+같은 영상에서 다시 만들려면 OpenCV와 NumPy가 설치된 환경에서 아래를 실행합니다. Python은 에셋 준비에만 필요하며 앱 실행·배포에는 필요하지 않습니다.
+
+```bash
+python scripts/extract-photo-avatar.py --video ../lip-sync-service/samples/input_video/avatar_25fps.mp4
+```
+
+제공된 원본 영상의 이용·재배포 권한은 별도로 확인해야 합니다. 다른 사진으로 교체할 때는 세 장의 크기와 얼굴 위치를 동일하게 맞추세요.
+`VITE_LIPSYNC_MODE=off`는 정적 이미지, `musetalk`는 아래 GPU 방식입니다. Vite 환경변수이므로 로컬에서는 재시작, Vercel에서는 빌드 환경 설정 후 재배포해야 합니다.
 
 ### MuseTalk 립싱크 연결
 
+먼저 `.env.local` 또는 Vercel 빌드 환경에 `VITE_LIPSYNC_MODE=musetalk`를 지정합니다.
 같은 작업 공간의 `../lip-sync-service` 스트림 서버를 MuseTalk Python 3.10/CUDA 환경에서 실행합니다.
 공식 MuseTalk 체크아웃, `models/musetalkV15`, `models/whisper`, 트럼프 아바타 영상이 필요합니다.
 
@@ -108,7 +128,7 @@ python -m pip install -r requirements-streaming.txt
 python -m src.realtime.stream_server --repo /path/to/MuseTalk --video samples/input_video/avatar_25fps.mp4 --host 127.0.0.1 --port 8765
 ```
 
-로컬 개발 앱은 `ws://127.0.0.1:8765/stream`에 자동 연결합니다.
+MuseTalk 모드의 로컬 개발 앱은 `ws://127.0.0.1:8765/stream`에 자동 연결합니다.
 원격 작업 공간이나 포트 포워딩으로 앱을 열 때는 `VITE_MUSETALK_WS_URL=/musetalk/stream`을 설정하세요.
 `npm run dev`의 WebSocket 중계가 앱과 같은 주소에서 작업 공간의 `127.0.0.1:8765`에 연결합니다.
 다른 주소를 쓸 때는
@@ -175,7 +195,7 @@ ONNX Runtime Web 1.30.0과 `@diffusionstudio/piper-wasm` 1.0.0을 사용합니�
 - 마이크를 연 상태에서 WebRTC로 실시간 음성 대화, 텍스트 입력, 사용자·AI 자막.
 - AI가 말할 때 끼어들면 재생과 이전 응답·자료 검색을 취소합니다.
 - 업로드 자료를 Vector Store로 검색하고 참고 자료 탭에 표시합니다. 실시간 웹 뉴스 검색은 없습니다.
-- MuseTalk GPU 서버가 연결되면 발화 중 립싱크 영상을 표시하며, 그렇지 않으면 정적 인물 이미지를 표시합니다. 실제 인물의 음성 복제는 제공하지 않습니다.
+- 기본 사진 립싱크는 발화 중 음성 세기에 따라 입 모양을 교체합니다. 선택적으로 MuseTalk GPU 영상을 사용할 수 있으며, 화면은 실제 인물이 아닌 AI 시뮬레이션임을 표시합니다.
 - 연결 실패·자동 재생 차단·자료 검색 실패 안내와 재시도.
 - 종료하면 발음·유창성·정확성·복잡성을 실제 사용자 발화로 평가합니다. 텍스트만 있으면 발음·유창성은 평가하지 않습니다.
 - 자료가 부족하거나 평가가 실패하면 임의의 점수를 표시하지 않습니다. 피드백은 AI 코칭용이며 공인 시험 점수가 아닙니다.
@@ -218,12 +238,17 @@ npm run test:browser
 npm run test:evaluation-ui
 npm run test:conversation-ui
 npm run test:piper-ui
+# npm run dev 실행 후 검사합니다. 기본 주소는 http://localhost:5174 입니다.
+npm run test:lipsync-ui
+npm run test:photo-lipsync-ui
 ```
 
 단위 테스트는 API를 호출하지 않습니다. 기본 브라우저 검사는 실제 마이크와 유료 세션을 사용하지 않고
 연결 실패·재시도·빈 평가·화면 이동·모바일·이미지 로딩·코드 분리를 확인합니다.
 Piper 브라우저 검사는 실제 ONNX 모델로 GPU·CPU 음성 생성과 재생·중단·실패 복구를 확인합니다.
 이 검사에서 Realtime 연결과 RAG API는 모의 응답이며, 유료 API는 호출하지 않습니다.
+사진 립싱크 검사는 세 입 모양과 고정 배경 픽셀, 오디오 시각 추적, 로딩 실패·중단·자동 재생 복구를 확인합니다.
+실제 Piper 음성으로 데스크톱·모바일 화면도 검사하며 캡처는 `test-results/photo-lipsync-*.png`에 저장합니다.
 테스트 서버 주소는 `TEST_URL=http://localhost:5174`처럼 변경할 수 있습니다.
 `LIVE_API=1 npm run test:browser`는 설정된 실제 OpenAI API와 합성 음성 입력으로 연결·RAG·끼어들기·평가를 검사하며 API 비용이 발생합니다.
 

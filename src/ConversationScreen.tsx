@@ -5,6 +5,8 @@ import { asset, devdayAsset } from './assets'
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { RealtimeClient, type Config, type Snapshot, type SpeechCue } from '../shared/realtime-client.js'
 import { PiperSpeech } from './piper/speech'
+import { lipSyncMode } from './lipsync/mode'
+import { photoFrames } from './lipsync/photo'
 import { elapsed } from './time'
 
 type Props = { onPrepareFinish: () => void; person: { name: string; image: string }; topic: string; onBack: () => void; onFinish: (record: Snapshot) => void }
@@ -118,7 +120,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
     </aside>
 
     <div className={`call-video mvp-video ${state.status === 'speaking' ? 'is-speaking' : ''} ${state.videoActive ? 'has-lipsync' : ''}`}>
-      <AssetImage className="mvp-portrait" sizes="(max-width: 799px) 440px, (min-aspect-ratio: 16/9) 53vh, 30vw" fetchPriority="high" src={asset('donald-hero.webp')} alt="트럼프를 모티브로 한 AI 대화 캐릭터" />
+      <AssetImage className={`mvp-portrait ${lipSyncMode === 'photo' ? 'mvp-photo-portrait' : ''}`} sizes="(max-width: 799px) 440px, (min-aspect-ratio: 16/9) 53vh, 30vw" fetchPriority="high" src={lipSyncMode === 'photo' ? photoFrames[0] : asset('donald-hero.webp')} alt="트럼프를 모티브로 한 AI 대화 캐릭터" />
       <canvas ref={client.attachVideo} className="mvp-lipsync" aria-label="Trump AI 립싱크 영상" />
       <div className="mvp-video-label"><span className="live-dot on" />TRUMP AI<span>AI SIMULATION</span></div>
       <div className="mvp-video-caption"><small>{modes[state.status] || state.status}</small><p>{lastAssistant ? renderSpeechText(lastAssistant.text, state.speechCue, lastAssistant.id) : 'A real conversation. A little more confidence.'}</p>{lastAssistant?.interrupted && <small>발화 중단 · 자막에 미재생 내용이 포함될 수 있습니다.</small>}</div>
@@ -126,7 +128,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
         <span className="connect-mark">Hi<span>:</span>Ring</span><h2>{connecting ? 'Trump AI를 만나고 있어요' : 'Ready to say hello?'}</h2>
         <p>{connecting ? '마이크 권한을 허용해 주세요. 잠시 후 대화가 시작됩니다.' : '영어로 말을 걸어보세요. 질문도, 가벼운 일상 이야기도 좋아요.'}</p>
         {connecting ? <button onClick={() => client.stop()}>연결 취소</button> : <><button className="connect-primary" onClick={() => void client.start(config)}>마이크 켜고 대화 시작</button><button className="connect-text" onClick={() => void client.start(config, true)}>마이크 없이 텍스트로 시작</button></>}
-        <small>실제 인물이 아닌 AI 역할극 · Piper 합성 음성<br />음성·텍스트와 관심사 정보는 OpenAI로 전송됩니다.<br />MuseTalk 연결 시 합성 음성이 영상 서버에도 전송됩니다.</small>
+        <small>실제 인물이 아닌 AI 역할극 · Piper 합성 음성<br />음성·텍스트와 관심사 정보는 OpenAI로 전송됩니다.{lipSyncMode === 'musetalk' && <><br />MuseTalk 연결 시 합성 음성이 영상 서버에도 전송됩니다.</>}</small>
       </div>}
     </div>
     <form className="mvp-composer" onSubmit={submit}>

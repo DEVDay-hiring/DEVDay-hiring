@@ -196,7 +196,7 @@ try {
           }
         }
         window.WebSocket = FakeSocket;
-        const voice = new PiperSpeech(), noop = () => {};
+        const voice = new PiperSpeech('musetalk'), noop = () => {};
         voice.attachAudio(audio); voice.attachVideo(document.querySelector('.mvp-lipsync'));
         voice.configure('wasm', { status: noop, notice: value => notices.push(value), backend: noop, progress: noop,
           playbackBlocked: value => blocked.push(value), playbackStarted: () => playbackStarts++, playback: noop, videoActive: noop });

@@ -1,6 +1,8 @@
 import { SpeechQueue } from '../../shared/speech-queue.js'
 import { PiperClient, type Result } from './client'
 import { MuseTalkClient } from '../lipsync/client'
+import { PhotoLipSync } from '../lipsync/photo'
+import { lipSyncMode, type LipSyncMode } from '../lipsync/mode'
 
 type Hooks = {
   status(status: string): void
@@ -22,11 +24,14 @@ export class PiperSpeech {
   private audio: HTMLAudioElement | null = null
   private url?: string
   private cancelPlayback?: () => void
-  private museTalk = new MuseTalkClient(
-    import.meta.env.VITE_MUSETALK_WS_URL?.trim() || (import.meta.env.DEV ? 'ws://127.0.0.1:8765/stream' : ''),
-    active => this.hooks.videoActive(active),
-  )
-  private museTalkEnabled = Boolean(import.meta.env.VITE_MUSETALK_WS_URL?.trim() || import.meta.env.DEV)
+  private video: MuseTalkClient | PhotoLipSync
+  private videoEnabled = false
+  constructor(private videoMode: LipSyncMode = lipSyncMode) {
+    const active = (value: boolean) => this.hooks.videoActive(value)
+    this.video = videoMode === 'musetalk' ? new MuseTalkClient(
+      import.meta.env.VITE_MUSETALK_WS_URL?.trim() || (import.meta.env.DEV ? 'ws://127.0.0.1:8765/stream' : ''), active,
+    ) : new PhotoLipSync(active)
+  }
   private engine = new PiperClient(event => {
     if (event.type === 'backend') { this.hooks.backend(event.backend); if (event.fallbackReason) this.hooks.notice(event.fallbackReason) }
     if (event.type === 'fallback') this.hooks.notice(event.message)
@@ -46,20 +51,25 @@ export class PiperSpeech {
   })
   get busy() { return this.queue.busy }
   attachAudio(node: HTMLAudioElement | null) { if (!node) this.stopAudio(); this.audio = node }
-  attachVideo(node: HTMLCanvasElement | null) { this.museTalk.attachCanvas(node) }
-  configure(mode: string, hooks: Hooks) { this.hooks = hooks; this.museTalkEnabled = mode !== 'off' && Boolean(import.meta.env.VITE_MUSETALK_WS_URL?.trim() || import.meta.env.DEV); this.engine.reset(); this.queue.configure(mode) }
+  attachVideo(node: HTMLCanvasElement | null) { this.video.attachCanvas(this.videoMode === 'off' ? null : node) }
+  configure(mode: string, hooks: Hooks) {
+    this.hooks = hooks
+    this.videoEnabled = mode !== 'off' && (this.videoMode === 'photo'
+      || (this.videoMode === 'musetalk' && Boolean(import.meta.env.VITE_MUSETALK_WS_URL?.trim() || import.meta.env.DEV)))
+    this.engine.reset(); this.queue.configure(mode)
+  }
   append(itemId: string, responseId: string, delta: string) { this.queue.append(itemId, responseId, delta) }
   completeItem(itemId: string, responseId: string, text: string) { this.queue.completeItem(itemId, responseId, text) }
   finish(responseId: string) { this.queue.finish(responseId) }
   interrupt() { this.queue.interrupt(); this.hooks.progress(''); this.hooks.playbackBlocked(false) }
-  dispose() { this.queue.dispose(); this.museTalk.dispose(); this.hooks = empty }
+  dispose() { this.queue.dispose(); this.video.dispose(); this.hooks = empty }
   async resume() {
     if (!this.audio?.src) return
     try { await this.audio.play(); this.hooks.playbackBlocked(false) }
     catch { this.hooks.playbackBlocked(true) }
   }
   private stopAudio() {
-    this.museTalk.stop()
+    this.video.stop()
     this.cancelPlayback?.(); this.cancelPlayback = undefined
     if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load() }
     if (this.url) URL.revokeObjectURL(this.url)
@@ -76,7 +86,7 @@ export class PiperSpeech {
       let began = false, settled = false
       let progressFrame = 0
       const cleanup = () => {
-        this.museTalk.stop()
+        this.video.stop()
         cancelAnimationFrame(progressFrame)
         audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); audio.removeEventListener('playing', playing)
         this.cancelPlayback = undefined
@@ -95,12 +105,14 @@ export class PiperSpeech {
         if (!current() || began) return
         began = true; this.hooks.playbackBlocked(false); started(); this.hooks.playbackStarted(); reportProgress(0)
         progressFrame = requestAnimationFrame(updateProgress)
-        if (this.museTalkEnabled) {
-          void this.museTalk.play(pcm, result.sampleRate, () => current() && !settled,
+        if (this.videoEnabled) {
+          void this.video.play(pcm, result.sampleRate, () => current() && !settled,
             () => audio.paused || audio.ended ? null : audio.currentTime).catch(() => {
             if (settled || !current()) return
-            this.museTalkEnabled = false
-            this.hooks.notice('MuseTalk 영상 연결이 끊겼습니다. 음성은 계속 재생됩니다.')
+            this.videoEnabled = false
+            this.hooks.notice(this.videoMode === 'musetalk'
+              ? 'MuseTalk 영상 연결이 끊겼습니다. 음성은 계속 재생됩니다.'
+              : '입 모양 이미지를 표시하지 못했습니다. 음성은 계속 재생됩니다.')
           })
         }
       }
