@@ -40,7 +40,8 @@ function renderSpeechText(text: string, cue: SpeechCue, itemId: string): ReactNo
       for (const character of segment) {
         const position = (offset + character.length / 2) / segment.length
         const blend = Math.max(0, Math.min(1, (progress - position + softness) / (2 * softness)))
-        characters.push(<span className="speech-progress-char" style={{ '--speech-blend': `${blend * 100}%` } as CSSProperties} key={`char-${start + offset}`}>{character}</span>)
+        const isCurrent = progress * segment.length >= offset && progress * segment.length < offset + character.length
+        characters.push(<span className="speech-progress-char" data-speech-current={isCurrent || undefined} style={{ '--speech-blend': `${blend * 100}%` } as CSSProperties} key={`char-${start + offset}`}>{character}</span>)
         offset += character.length
       }
       nodes.push(<span key={`active-${start}-${end}`}>{characters}</span>)
@@ -55,7 +56,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
   const [client] = useState(() => new RealtimeClient({ voice: new PiperSpeech() }))
   const state = useSyncExternalStore(client.subscribe, client.getSnapshot)
   const [draft, setDraft] = useState('')
-  const [tab, setTab] = useState<'conversation' | 'sources' | 'logs'>('conversation')
+  const [tab, setTab] = useState<'conversation' | 'sources'>('conversation')
   const [health, setHealth] = useState('서버 확인 중')
   const [config, setConfig] = useState<Config>({ topic, level: 'intermediate', support: 'english', correction: 'on_request', speechMode: 'auto', learnerContext: '', evaluateAudio: true })
   const transcriptRef = useRef<HTMLDivElement>(null)
@@ -73,6 +74,20 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
     const list = transcriptRef.current
     if (list) list.scrollTop = list.scrollHeight
   }, [state.messages, tab])
+  useEffect(() => {
+    const list = transcriptRef.current
+    if (!list || tab !== 'conversation' || !state.speechCue) return
+    const current = list.querySelector<HTMLElement>('[data-speech-current="true"]')
+    if (!current) return
+    const listRect = list.getBoundingClientRect()
+    const currentRect = current.getBoundingClientRect()
+    const topLimit = listRect.top + 24
+    const bottomLimit = listRect.bottom - 24
+    const adjustment = currentRect.top < topLimit
+      ? currentRect.top - topLimit
+      : currentRect.bottom > bottomLimit ? currentRect.bottom - bottomLimit : 0
+    if (adjustment) list.scrollTo({ top: Math.max(0, list.scrollTop + adjustment), behavior: 'smooth' })
+  }, [state.speechCue, tab])
   const change = (name: keyof Config, value: string) => setConfig(previous => ({ ...previous, [name]: value }))
   const submit = (event: FormEvent) => { event.preventDefault(); if (client.text(draft)) setDraft('') }
   const finish = () => onFinish(client.stop())
@@ -128,11 +143,11 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
 
     <aside className="mvp-transcript-panel">
       <header><h2>Our conversation</h2><span>한 문장씩 쌓이는 자신감</span></header>
-      <div className="mvp-tabs" role="tablist" aria-label="대화 정보"><button role="tab" aria-selected={tab === 'conversation'} onClick={() => setTab('conversation')}>대화 기록</button><button role="tab" aria-selected={tab === 'sources'} onClick={() => setTab('sources')}>참고 기사 <b>{state.sources.length}</b></button><button role="tab" aria-selected={tab === 'logs'} onClick={() => setTab('logs')}>연결</button></div>
+      <div className="mvp-tabs" role="tablist" aria-label="대화 정보"><button role="tab" aria-selected={tab === 'conversation'} onClick={() => setTab('conversation')}>대화 기록</button><button role="tab" aria-selected={tab === 'sources'} onClick={() => setTab('sources')}>참고 기사 <b>{state.sources.length}</b></button></div>
       {tab === 'conversation' ? <div className="mvp-messages" ref={transcriptRef} role="log" aria-label="실시간 대화 기록">
         {!state.messages.length && <div className="mvp-empty"><span>“</span><h3>시작은 가벼운 인사로.</h3><p>실제 대화 자막이 이곳에 나타납니다.</p><button onClick={() => setDraft('Hi Trump. I have a question. Why do people call it AI instead of SI?')}>AI와 SI에 대해 물어보기 ↗</button></div>}
         {state.messages.map(m => <article className={`mvp-message ${m.role}`} key={m.id}><small>{m.role === 'user' ? 'You' : 'Trump AI'}{m.partial ? ' · …' : ''}{m.interrupted ? ' · 발화 중단' : ''}</small><p>{m.role === 'assistant' ? renderSpeechText(m.text, state.speechCue, m.id) : m.text}</p>{m.interrupted && <em>자막에 듣지 못한 내용이 포함될 수 있습니다.</em>}</article>)}
-      </div> : tab === 'sources' ? <div className="mvp-source-list"><p className="subtle">Vector Store에서 찾은 업로드 자료입니다. 기사의 주장이 독립적으로 검증되었다는 뜻은 아닙니다.</p>{!state.sources.length && <p>AI/SI 또는 실제 발언에 대해 물어보면 검색 결과가 표시됩니다.</p>}{state.sources.map(s => <article key={s.filename}><span>REFERENCE</span><h3>{s.filename}</h3><p>{s.text}</p></article>)}</div> : <div className="mvp-log-list"><dl><dt>연결 시간</dt><dd>{state.connectionMs ?? '—'} ms</dd><dt>최근 응답 지연</dt><dd>{state.latencyMs ?? '—'} ms</dd><dt>자료 검색</dt><dd>{state.searchCount}회</dd><dt>음성 실행</dt><dd>{state.voiceBackend === 'webgpu+wasm' ? 'GPU + CPU' : state.voiceBackend === 'wasm' ? 'CPU' : config.speechMode === 'off' ? '자막만' : '준비 전'}</dd></dl><p className="subtle">브라우저 마이크 → WebRTC → Realtime API<br />답변 텍스트 → 브라우저 Piper 음성<br />API 키는 서버에만 보관됩니다.</p>{state.logs.map((log, i) => <p key={i}><time>{log.time}</time> {log.type}{log.detail && <span>{log.detail}</span>}</p>)}</div>}
+      </div> : <div className="mvp-source-list"><p className="subtle">Vector Store에서 찾은 업로드 자료입니다. 기사의 주장이 독립적으로 검증되었다는 뜻은 아닙니다.</p>{!state.sources.length && <p>AI/SI 또는 실제 발언에 대해 물어보면 검색 결과가 표시됩니다.</p>}{state.sources.map(s => <article key={s.filename}><span>REFERENCE</span><h3>{s.filename}</h3><p>{s.text}</p></article>)}</div>}
       <footer><span className={`live-dot ${state.connected ? 'on' : ''}`} />{modes[state.status] || state.status}</footer>
     </aside>
     {state.error && <div className="mvp-error" role="alert"><span>{state.error}</span><button onClick={() => client.dismissError()} aria-label="오류 안내 닫기">×</button></div>}
