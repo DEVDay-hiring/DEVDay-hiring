@@ -93,7 +93,7 @@ test('Realtime session preserves STT and RAG but requests text without OpenAI TT
   };
   try {
     await withServer(createApiApp({ env: { OPENAI_API_KEY: 'test-only', APP_ORIGIN: 'https://app.example' } }), async base => {
-      const response = await send(base, '/api/session', { sdp: 'v=0\r\nm=audio\r\nm=application\r\n' }, 'https://app.example');
+      const response = await send(base, '/api/session', { sdp: 'v=0\r\nm=audio\r\nm=application\r\n', config: { topic: 'Travel and food' } }, 'https://app.example');
       assert.equal(response.status, 201);
       assert.deepEqual(session.output_modalities, ['text']); assert.equal(session.audio.output, undefined);
       assert.equal(session.audio.input.transcription.model, 'gpt-4o-mini-transcribe');
@@ -102,6 +102,8 @@ test('Realtime session preserves STT and RAG but requests text without OpenAI TT
       assert.equal(session.audio.input.turn_detection.create_response, false);
       assert.equal(session.audio.input.turn_detection.interrupt_response, false);
       assert.equal(session.tools[0].name, 'search_trump_news');
+      assert.match(session.instructions, /"topic":"Travel and food"/);
+      assert.match(session.instructions, /one easy question about the selected conversation topic/);
     });
   } finally { globalThis.fetch = realFetch; }
 });

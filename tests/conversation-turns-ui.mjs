@@ -12,21 +12,31 @@ try {
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 1512, height: 982 } });
   const errors = [];
+  let sessionConfig;
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/piper/**', route => route.abort());
   await page.route('**/api/**', route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/session') return route.fulfill({ status: 201, contentType: 'application/sdp', body: 'synthetic SDP' });
+    if (path === '/api/session') {
+      sessionConfig = route.request().postDataJSON().config;
+      return route.fulfill({ status: 201, contentType: 'application/sdp', body: 'synthetic SDP' });
+    }
     const data = path === '/api/health' ? { ok: true, apiKeyConfigured: true, knowledgeConfigured: true }
       : { resultCount: 1, results: [{ filename: 'AI.md', text: 'SI means Super Intelligence.', score: .9 }] };
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) });
   });
   await installSyntheticPeer(page, { duplicateEvents: true, toolPreamble: true });
   await page.goto(`http://127.0.0.1:${server.address().port}/#conversation`);
+  await page.getByRole('textbox', { name: '대화 주제', exact: true }).fill('Travel and food');
   await page.getByRole('button', { name: '마이크 없이 텍스트로 시작' }).click();
-  await page.locator('#conversation-input:enabled').waitFor();
-  assert.equal(await page.locator('.mvp-message.assistant').count(), 0, 'wait for the learner instead of greeting first');
-  assert.equal(await page.evaluate(() => window.syntheticEvents.filter(event => event.type === 'response.create').length), 0);
+  await page.locator('.mvp-message.assistant').filter({ hasText: 'Hello!' }).waitFor();
+  assert.equal(sessionConfig.topic, 'Travel and food', 'opening must receive the selected topic');
+  assert.equal(await page.locator('.mvp-message.assistant').count(), 1, 'one opening without learner input');
+  await page.evaluate(() => {
+    window.syntheticPeer.channel.dispatchEvent(new Event('open'));
+    window.syntheticPeer.channel.emit({ type: 'session.created' });
+  });
+  assert.equal(await page.evaluate(() => window.syntheticEvents.filter(event => event.type === 'response.create').length), 1);
 
   await page.evaluate(() => {
     const emit = event => window.syntheticPeer.channel.emit(event);
@@ -46,11 +56,13 @@ try {
     await page.locator('.mvp-message.assistant').filter({ hasText: expected }).waitFor();
   }
   assert.equal(await page.locator('.mvp-message.user').count(), 2);
-  assert.equal(await page.locator('.mvp-message.assistant').count(), 2, 'one answer per question without an unsolicited welcome');
+  assert.equal(await page.locator('.mvp-message.assistant').count(), 3, 'one opening and one answer per question');
   assert.equal(await page.getByText('Lookup preamble:', { exact: false }).count(), 0);
   assert.equal(await page.getByText('English conversation practice.', { exact: false }).count(), 0);
   const requests = await page.evaluate(() => window.syntheticEvents.filter(event => event.type === 'response.create').length);
-  assert.equal(requests, 3, 'direct answer, silent search pass, grounded answer');
+  assert.equal(requests, 4, 'opening, direct answer, silent search pass, grounded answer');
+  assert.equal(await page.evaluate(() => window.syntheticEvents.filter(event => event.type === 'response.create'
+    && event.response.metadata.phase === 'greeting').length), 1, 'later turns must not restart the opening');
   assert.deepEqual(errors, []);
   console.log('PASS: built conversation UI ignores prompt echoes and duplicate events, and displays only one final answer per question.');
 } finally {

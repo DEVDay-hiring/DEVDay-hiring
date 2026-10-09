@@ -150,6 +150,7 @@ export class RealtimeClient {
         this.tick = setInterval(() => {
           if (current()) this.update({ durationSeconds: Math.floor((Date.now() - this.snapshot.startedAt) / 1000) });
         }, 1000);
+        controller.greeting();
       };
       channel.addEventListener('open', ready);
       channel.addEventListener('message', ({ data }) => {

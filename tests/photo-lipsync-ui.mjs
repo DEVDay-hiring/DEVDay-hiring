@@ -200,8 +200,6 @@ try {
     }).observe(canvas, { attributes: true, attributeFilter: ['data-mouth-state'] });
   });
   await page.getByRole('button', { name: '마이크 없이 텍스트로 시작' }).click();
-  await page.locator('#conversation-input').fill('I enjoy learning English.');
-  await page.getByRole('button', { name: 'Send ↗' }).click();
   for (const [label, viewport] of [['desktop', { width: 1512, height: 982 }], ['mobile', { width: 390, height: 844 }], ['mobile-small', { width: 320, height: 740 }]]) {
     await page.setViewportSize(viewport);
     if (label !== 'desktop') {
