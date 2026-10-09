@@ -1,0 +1,132 @@
+:root {
+  font-family: 'Plus Jakarta Sans', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  color: #080b12;
+  background: #f3f7ff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible { outline: 4px solid #103da8; outline-offset: 4px; }
+
+.app { position: relative; width: 100vw; height: 100dvh; overflow: hidden; background: #f3f7ff; }
+.app-background { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .5; pointer-events: none; }
+.stage { position: absolute; left: calc(50% - 960px); top: calc(50% - 540px); width: 1920px; height: 1080px; overflow: hidden; transform-origin: center; background: #f3f7ff; }
+.screen-loading { display: grid; place-items: center; height: 100%; color: #677492; }
+.stage.selection { background: transparent; }
+.brand { display: inline-flex; align-items: baseline; white-space: nowrap; font-size: 44px; font-weight: 800; line-height: 1.5; letter-spacing: -1.32px; color: #172b85; }
+.brand b { color: #050505; font-weight: 800; }
+.brand span:last-child { color: #2563eb; }
+.brand-large { font-size: 200px; letter-spacing: -6px; }
+
+.onboarding-click { display: block; position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; text-align: left; color: inherit; }
+.onboarding-click > * { position: absolute; }
+.hackathon-label { left: 52px; top: 42px; z-index: 2; font-size: 32px; font-weight: 700; letter-spacing: -.96px; line-height: 1.5; color: rgba(0,0,0,.8); }
+.onboarding-logo { left: 111px; top: 227px; z-index: 2; }
+.onboarding-subtitle { left: 121px; top: 506px; z-index: 2; font-size: 36px; font-weight: 500; letter-spacing: -1.08px; line-height: 1.5; }
+.onboarding-subtitle strong { font-weight: 700; }
+.onboarding-art { left: 813px; top: 250px; width: 1082px; height: 811px; object-fit: cover; pointer-events: none; }
+.onboarding-fade { left: 813px; top: 749px; width: 1082px; height: 321px; background: linear-gradient(to bottom, rgba(243,247,255,0), rgba(243,247,255,.85) 55%, #f3f7ff); pointer-events: none; }
+.team-label { left: 52px; top: 943px; z-index: 2; font-size: 28px; font-weight: 500; line-height: 1.5; letter-spacing: -.84px; color: rgba(0,0,0,.6); }
+.click-label { left: 858px; top: 909px; z-index: 2; font-size: 28px; font-weight: 700; letter-spacing: -.84px; line-height: 1.5; }
+
+.selection-logo { position: absolute; left: 73px; top: 44px; z-index: 4; padding: 0; border: 0; background: none; }
+.selection-heading { position: absolute; left: 73px; top: 147px; z-index: 3; margin: 0; font-size: 68px; font-weight: 800; line-height: 1.5; letter-spacing: -2.04px; white-space: nowrap; }
+.selection-heading span { color: #2563eb; }
+.selection-subtitle { position: absolute; left: 73px; top: 361px; z-index: 3; margin: 0; font-size: 28px; font-weight: 500; line-height: 1.5; color: rgba(0,0,0,.66); white-space: nowrap; }
+.category-list { position: absolute; left: 74px; top: 480px; z-index: 5; display: flex; gap: 8px; }
+.category-chip { height: 62px; padding: 0 30px; border: 0; border-radius: 28px; background: #e6eefb; color: #677492; font-size: 20px; font-weight: 600; white-space: nowrap; transition: background .15s, color .15s; }
+.category-chip:hover { background: #d5e4ff; }
+.category-chip.active { background: #2563eb; color: white; }
+.person-grid { position: absolute; left: 73px; top: 575px; z-index: 5; display: grid; grid-template-columns: repeat(3, 216px); grid-auto-rows: 214px; column-gap: 20px; row-gap: 28px; }
+.person-card { position: relative; display: block; width: 216px; height: 214px; padding: 0; overflow: hidden; border: 2px solid transparent; border-radius: 12px; background: #e8f1ff; text-align: left; box-shadow: 1px 1px 1px rgba(0,0,0,.25); transition: border-color .15s, transform .15s; }
+.person-card:hover { transform: translateY(-4px); }
+.person-card.selected { border-color: #2563eb; }
+.portrait { position: absolute; inset: 0; display: block; overflow: hidden; }
+.portrait img { position: absolute; display: block; object-fit: cover; }
+.person-card-donald .portrait img { left: -2%; top: -.5%; width: 88%; height: 88%; object-fit: contain; }
+.person-card-elon .portrait img { left: 3%; top: -1%; width: 94.5%; height: 94.5%; }
+.person-card-einstein .portrait img { left: 1.5%; top: -1%; width: 97.7%; height: 97.7%; }
+.person-card-sol .portrait img { left: 6%; top: 4%; width: 88.5%; height: 88.5%; }
+.person-card-luna .portrait img { left: 9%; top: 3%; width: 84%; height: 84%; }
+.person-card-obama .portrait img { left: 3.774%; top: 3.333%; width: 92.925%; height: 92.857%; }
+.person-card-obama .card-caption strong { font-size: 14px; font-weight: 800; }
+.card-caption { position: absolute; left: 0; right: 0; bottom: 0; height: 51px; display: flex; flex-direction: column; justify-content: center; padding: 2px 14px; background: #fff; }
+.card-caption strong { font-size: 16px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.card-caption small { font-size: 12px; font-weight: 400; line-height: 1.5; color: rgba(0,0,0,.5); white-space: nowrap; }
+.person-hero { position: absolute; left: 669px; top: 44px; z-index: 8; width: 825px; height: 1100px; pointer-events: none; }
+.person-hero img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.profile-panel { position: absolute; left: 1393px; top: 175px; z-index: 3; width: 474px; height: 663px; padding: 24px 34px; border-radius: 16px; background: #f3f7ff; }
+.profile-panel h2 { margin: 0; font-size: 36px; font-weight: 800; line-height: 1.5; letter-spacing: -1.08px; white-space: nowrap; }
+.person-role { margin: 0; font-size: 20px; font-weight: 500; line-height: 1.5; letter-spacing: -.6px; color: rgba(0,0,0,.6); }
+.person-description { margin: 23px 0 0; width: 337px; min-height: 120px; font-size: 20px; font-weight: 500; line-height: 1.5; color: rgba(0,0,0,.7); white-space: pre-line; }
+.tag-list { display: grid; gap: 12px; width: 406px; min-height: 92px; margin-top: 24px; padding-left: 3px; }
+.tag-row { display: flex; gap: 12px; }
+.tag-list span { display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 16px; background: #e6eefb; color: #677492; font-size: 20px; font-weight: 600; white-space: nowrap; }
+.profile-divider { display: block; width: 406px; height: 1px; margin-top: 23px; }
+.profile-panel h3 { display: flex; align-items: center; gap: 6px; margin: 15px 0 17px; font-size: 20px; font-weight: 600; line-height: 1.5; letter-spacing: -.6px; }
+.profile-panel h3 img { flex: 0 0 auto; margin-left: 1px; }
+.prompt-list { display: grid; gap: 12px; }
+.prompt-list button { display: flex; align-items: center; justify-content: space-between; width: 406px; height: 53px; padding: 0 16px 0 19px; border: 0; border-radius: 12px; background: #e6eefb; color: rgba(0,0,0,.6); font-size: 20px; font-weight: 500; letter-spacing: -.6px; text-align: left; white-space: nowrap; }
+.prompt-list button:hover { background: #d5e4ff; }
+.prompt-list button img { flex: 0 0 auto; margin-right: -8px; }
+.conversation-button { position: absolute; left: 1393px; top: 879px; z-index: 4; display: flex; align-items: center; justify-content: center; width: 474px; height: 140px; border: 0; border-radius: 16px; background: #2563eb; color: #fff; font-size: 32px; font-weight: 700; letter-spacing: -.96px; transition: background .15s, transform .15s; }
+.conversation-button:hover:not(:disabled) { background: #174fcf; transform: translateY(-3px); }
+.conversation-button:disabled { background: #656970; cursor: not-allowed; }
+
+.notice-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: rgba(13,31,76,.48); backdrop-filter: blur(7px); }
+.notice-dialog { position: relative; width: min(100%, 440px); padding: 42px 34px 30px; border-radius: 22px; background: #f3f7ff; box-shadow: 0 22px 70px rgba(14,36,78,.25); text-align: center; }
+.notice-close { position: absolute; right: 16px; top: 12px; width: 38px; height: 38px; border: 0; background: none; color: #677492; font-size: 30px; line-height: 1; }
+.notice-icon { display: grid; place-items: center; width: 62px; height: 62px; margin: 0 auto 20px; border-radius: 18px; background: #dfeaff; color: #2563eb; font-size: 34px; }
+.notice-dialog h2 { margin: 0; font-size: 27px; }
+.notice-dialog p { margin: 14px 0 28px; color: #53617d; font-size: 16px; line-height: 1.7; }
+.notice-confirm { width: 100%; height: 50px; border: 0; border-radius: 12px; background: #2563eb; color: white; font-size: 17px; font-weight: 700; }
+
+@media (max-width: 799px) {
+  .app { width: 100%; height: auto; min-height: 100dvh; overflow: visible; }
+  .stage { position: relative; left: auto; top: auto; width: 100%; height: auto; min-height: 100dvh; transform: none !important; }
+  .onboarding-click { position: relative; min-height: 100dvh; padding: 30px 24px 28px; overflow: hidden; }
+  .onboarding-click > * { position: relative; left: auto; top: auto; }
+  .hackathon-label { display: block; font-size: clamp(14px, 3.7vw, 20px); letter-spacing: -.4px; }
+  .onboarding-logo { display: block; margin: 12vh 0 0; }
+  .brand-large { font-size: clamp(70px, 19vw, 130px); letter-spacing: -4px; line-height: 1.2; }
+  .onboarding-subtitle { display: block; margin-top: 12px; font-size: clamp(18px, 4.7vw, 28px); letter-spacing: -.6px; line-height: 1.5; }
+  .onboarding-subtitle br { display: none; }
+  .onboarding-art { display: block; width: 116%; height: auto; margin: 3vh -8% 0; object-fit: contain; }
+  .onboarding-fade { position: absolute; left: 0; top: auto; bottom: 60px; width: 100%; height: 130px; }
+  .team-label { display: block; margin-top: -1vh; font-size: 14px; line-height: 1.5; }
+  .click-label { display: block; margin-top: 16px; color: #2563eb; font-size: 16px; }
+
+  .selection { display: flex; flex-direction: column; gap: 0; padding: 22px 20px 36px; overflow: hidden; }
+  .selection-logo, .selection-heading, .selection-subtitle, .category-list, .person-grid, .person-hero, .profile-panel, .conversation-button { position: relative; left: auto; top: auto; z-index: 2; }
+  .selection-logo { align-self: flex-start; order: 0; }
+  .brand { font-size: 32px; }
+  .selection-heading { order: 1; margin-top: 22px; font-size: clamp(29px, 8vw, 44px); line-height: 1.3; letter-spacing: -1.4px; }
+  .selection-subtitle { order: 2; margin-top: 14px; font-size: 15px; line-height: 1.6; white-space: normal; }
+  .category-list { order: 3; gap: 8px; width: calc(100% + 20px); margin-top: 24px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+  .category-list::-webkit-scrollbar { display: none; }
+  .category-chip { flex: 0 0 auto; height: 42px; padding: 0 18px; font-size: 14px; }
+  .person-grid { order: 4; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: auto; gap: 10px; width: 100%; margin-top: 14px; }
+  .person-card { width: 100%; height: auto; aspect-ratio: 216 / 214; }
+  .card-caption { height: 29%; padding: 3px 6px; }
+  .card-caption strong { font-size: clamp(9px, 2.4vw, 13px); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; }
+  .person-card-obama .card-caption strong { font-size: clamp(9px, 2.4vw, 13px); }
+  .card-caption small { font-size: clamp(8px, 2vw, 11px); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; }
+  .person-hero { order: 5; z-index: 8; align-self: center; width: min(100%, 400px); height: 330px; margin-top: 18px; overflow: hidden; }
+  .person-hero img { object-position: center top; }
+  .profile-panel { order: 6; width: 100%; height: auto; margin-top: -4px; padding: 24px; background: rgba(243,247,255,.96); }
+  .profile-panel h2 { font-size: 27px; }
+  .person-role { font-size: 14px; }
+  .person-description { width: auto; min-height: 0; margin-top: 15px; font-size: 14px; white-space: normal; }
+  .tag-list { width: 100%; min-height: 0; gap: 7px; margin-top: 18px; padding-left: 0; }
+  .tag-row { flex-wrap: wrap; gap: 7px; }
+  .tag-list span { height: 30px; padding: 0 11px; font-size: 13px; }
+  .profile-divider { width: 100%; margin-top: 18px; }
+  .profile-panel h3 { margin: 14px 0 12px; font-size: 15px; }
+  .prompt-list { gap: 8px; }
+  .prompt-list button { width: 100%; height: 43px; padding: 0 12px; font-size: 12px; letter-spacing: -.2px; }
+  .conversation-button { order: 7; width: 100%; height: 62px; margin-top: 18px; font-size: 18px; }
+}

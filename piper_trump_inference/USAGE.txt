@@ -1,0 +1,5 @@
+HiRing synthetic voice demo. Not an authentic recording of Donald Trump.
+Inference requires the .onnx and .onnx.json files together.
+Training dataset rights/license must be checked before redistribution or commercial use.
+Piper source: https://github.com/OHF-Voice/piper1-gpl (GPL-3.0-or-later).
+The checkpoint is not included in the inference ZIP. Keep checkpoints/last.ckpt to resume.

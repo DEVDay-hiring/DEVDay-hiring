@@ -1,0 +1,22 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="84" height="84" viewBox="0 0 84 84" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 22">
+<g id="Ellipse 2" filter="url(#filter0_f_0_5)">
+<circle cx="42" cy="42" r="40" fill="#FF0000"/>
+</g>
+<g id="call_end">
+<mask id="mask0_0_5" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="18" y="18" width="48" height="48">
+<rect id="Bounding box" x="18" y="18" width="48" height="48" fill="#D9D9D9"/>
+</mask>
+<g mask="url(#mask0_0_5)">
+<path id="call_end_2" d="M24.8 50.8L20.2 46.3C19.8 45.9 19.6 45.4333 19.6 44.9C19.6 44.3667 19.8 43.9 20.2 43.5C23.1333 40.3333 26.5167 37.9583 30.35 36.375C34.1833 34.7917 38.0667 34 42 34C45.9333 34 49.8083 34.7917 53.625 36.375C57.4417 37.9583 60.8333 40.3333 63.8 43.5C64.2 43.9 64.4 44.3667 64.4 44.9C64.4 45.4333 64.2 45.9 63.8 46.3L59.2 50.8C58.8333 51.1667 58.4083 51.3667 57.925 51.4C57.4417 51.4333 57 51.3 56.6 51L50.8 46.6C50.5333 46.4 50.3333 46.1667 50.2 45.9C50.0667 45.6333 50 45.3333 50 45V39.3C48.7333 38.9 47.4333 38.5833 46.1 38.35C44.7667 38.1167 43.4 38 42 38C40.6 38 39.2333 38.1167 37.9 38.35C36.5667 38.5833 35.2667 38.9 34 39.3V45C34 45.3333 33.9333 45.6333 33.8 45.9C33.6667 46.1667 33.4667 46.4 33.2 46.6L27.4 51C27 51.3 26.5583 51.4333 26.075 51.4C25.5917 51.3667 25.1667 51.1667 24.8 50.8ZM30 40.9C29.0333 41.4 28.1 41.975 27.2 42.625C26.3 43.275 25.3667 44 24.4 44.8L26.4 46.8L30 44V40.9ZM54 41V44L57.6 46.8L59.6 44.9C58.6333 44.0333 57.7 43.2833 56.8 42.65C55.9 42.0167 54.9667 41.4667 54 41Z" fill="white"/>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_f_0_5" x="0" y="0" width="84" height="84" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="1" result="effect1_foregroundBlur_0_5"/>
+</filter>
+</defs>
+</svg>

@@ -1,0 +1,332 @@
+{
+  "assets": {
+    "atrium-bg.webp": "atrium-bg.webp",
+    "devday/arrow-forward.svg": "devday/arrow-forward.svg",
+    "devday/conversation-bg.webp": "devday/conversation-bg.webp",
+    "devday/conversation-trump.webp": "devday/conversation-trump.webp",
+    "devday/conversation-video.webp": "devday/conversation-video.webp",
+    "devday/conversation-waveform.webp": "devday/conversation-waveform.webp",
+    "devday/emoji-objects.svg": "devday/emoji-objects.svg",
+    "devday/feedback-good.svg": "devday/feedback-good.svg",
+    "devday/feedback-improve.svg": "devday/feedback-improve.svg",
+    "devday/feedback-report.svg": "devday/feedback-report.svg",
+    "devday/graphic-eq.svg": "devday/graphic-eq.svg",
+    "devday/hangup.svg": "devday/hangup.svg",
+    "devday/microphone.svg": "devday/microphone.svg",
+    "devday/quick-phrases.svg": "devday/quick-phrases.svg",
+    "devday/refresh.svg": "devday/refresh.svg",
+    "devday/score-78.webp": "devday/score-78.webp",
+    "devday/score-line-71.svg": "devday/score-line-71.svg",
+    "devday/score-line-76.svg": "devday/score-line-76.svg",
+    "devday/score-line-82.svg": "devday/score-line-82.svg",
+    "devday/score-line-83.svg": "devday/score-line-83.svg",
+    "devday/score-line-end.svg": "devday/score-line-end.svg",
+    "devday/sms.svg": "devday/sms.svg",
+    "devday/speaker-alt.svg": "devday/speaker-alt.svg",
+    "devday/speaker.svg": "devday/speaker.svg",
+    "devday/speech-tail.svg": "devday/speech-tail.svg",
+    "devday/summary-bg.webp": "devday/summary-bg.webp",
+    "devday/summary-duo.webp": "devday/summary-duo.webp",
+    "devday/summary-elon.webp": "devday/summary-elon.webp",
+    "devday/summary-luna.webp": "devday/summary-luna.webp",
+    "devday/tip-check.svg": "devday/tip-check.svg",
+    "divider.svg": "divider.svg",
+    "donald-hero.webp": "donald-hero.webp",
+    "einstein-card.webp": "einstein-card.webp",
+    "einstein-hero.webp": "einstein-hero.webp",
+    "elon-hero.webp": "elon-hero.webp",
+    "luna-hero.webp": "luna-hero.webp",
+    "obama-card.webp": "obama-card.webp",
+    "obama-hero.webp": "obama-hero.webp",
+    "onboarding-people.webp": "onboarding-people.webp",
+    "selection-arrow.svg": "selection-arrow.svg",
+    "selection-chat.svg": "selection-chat.svg",
+    "sol-card.webp": "sol-card.webp",
+    "sol-hero.webp": "sol-hero.webp",
+    "donald-card.webp": "devday/conversation-trump.webp",
+    "elon-card.webp": "devday/summary-elon.webp",
+    "luna-card.webp": "devday/summary-luna.webp"
+  },
+  "images": {
+    "atrium-bg.webp": [
+      [
+        "atrium-bg-640.webp",
+        640,
+        360
+      ],
+      [
+        "atrium-bg-1280.webp",
+        1280,
+        720
+      ],
+      [
+        "atrium-bg.webp",
+        1672,
+        941
+      ]
+    ],
+    "devday/conversation-bg.webp": [
+      [
+        "devday/conversation-bg-640.webp",
+        640,
+        360
+      ],
+      [
+        "devday/conversation-bg-1280.webp",
+        1280,
+        720
+      ],
+      [
+        "devday/conversation-bg.webp",
+        1672,
+        941
+      ]
+    ],
+    "devday/conversation-trump.webp": [
+      [
+        "devday/conversation-trump-224.webp",
+        224,
+        222
+      ],
+      [
+        "devday/conversation-trump.webp",
+        448,
+        444
+      ]
+    ],
+    "devday/conversation-video.webp": [
+      [
+        "devday/conversation-video.webp",
+        678,
+        452
+      ]
+    ],
+    "devday/conversation-waveform.webp": [
+      [
+        "devday/conversation-waveform-279.webp",
+        279,
+        94
+      ],
+      [
+        "devday/conversation-waveform.webp",
+        558,
+        187
+      ]
+    ],
+    "devday/score-78.webp": [
+      [
+        "devday/score-78-226.webp",
+        226,
+        226
+      ],
+      [
+        "devday/score-78.webp",
+        452,
+        452
+      ]
+    ],
+    "devday/summary-bg.webp": [
+      [
+        "devday/summary-bg-640.webp",
+        640,
+        360
+      ],
+      [
+        "devday/summary-bg-1280.webp",
+        1280,
+        720
+      ],
+      [
+        "devday/summary-bg.webp",
+        1672,
+        941
+      ]
+    ],
+    "devday/summary-duo.webp": [
+      [
+        "devday/summary-duo-652.webp",
+        652,
+        522
+      ],
+      [
+        "devday/summary-duo.webp",
+        1304,
+        1044
+      ]
+    ],
+    "devday/summary-elon.webp": [
+      [
+        "devday/summary-elon-224.webp",
+        224,
+        222
+      ],
+      [
+        "devday/summary-elon.webp",
+        448,
+        444
+      ]
+    ],
+    "devday/summary-luna.webp": [
+      [
+        "devday/summary-luna-224.webp",
+        224,
+        222
+      ],
+      [
+        "devday/summary-luna.webp",
+        448,
+        444
+      ]
+    ],
+    "donald-hero.webp": [
+      [
+        "donald-hero-400.webp",
+        400,
+        533
+      ],
+      [
+        "donald-hero-800.webp",
+        800,
+        1067
+      ],
+      [
+        "donald-hero.webp",
+        1086,
+        1448
+      ]
+    ],
+    "einstein-card.webp": [
+      [
+        "einstein-card-224.webp",
+        224,
+        222
+      ],
+      [
+        "einstein-card.webp",
+        448,
+        444
+      ]
+    ],
+    "einstein-hero.webp": [
+      [
+        "einstein-hero-400.webp",
+        400,
+        600
+      ],
+      [
+        "einstein-hero-800.webp",
+        800,
+        1200
+      ],
+      [
+        "einstein-hero.webp",
+        1024,
+        1536
+      ]
+    ],
+    "elon-hero.webp": [
+      [
+        "elon-hero-400.webp",
+        400,
+        600
+      ],
+      [
+        "elon-hero-800.webp",
+        800,
+        1200
+      ],
+      [
+        "elon-hero.webp",
+        1024,
+        1536
+      ]
+    ],
+    "luna-hero.webp": [
+      [
+        "luna-hero-400.webp",
+        400,
+        600
+      ],
+      [
+        "luna-hero-800.webp",
+        800,
+        1200
+      ],
+      [
+        "luna-hero.webp",
+        1024,
+        1536
+      ]
+    ],
+    "obama-card.webp": [
+      [
+        "obama-card-224.webp",
+        224,
+        224
+      ],
+      [
+        "obama-card.webp",
+        448,
+        448
+      ]
+    ],
+    "obama-hero.webp": [
+      [
+        "obama-hero-400.webp",
+        400,
+        600
+      ],
+      [
+        "obama-hero-800.webp",
+        800,
+        1200
+      ],
+      [
+        "obama-hero.webp",
+        1024,
+        1536
+      ]
+    ],
+    "onboarding-people.webp": [
+      [
+        "onboarding-people-724.webp",
+        724,
+        543
+      ],
+      [
+        "onboarding-people.webp",
+        1448,
+        1086
+      ]
+    ],
+    "sol-card.webp": [
+      [
+        "sol-card-224.webp",
+        224,
+        222
+      ],
+      [
+        "sol-card.webp",
+        448,
+        444
+      ]
+    ],
+    "sol-hero.webp": [
+      [
+        "sol-hero-400.webp",
+        400,
+        600
+      ],
+      [
+        "sol-hero-800.webp",
+        800,
+        1200
+      ],
+      [
+        "sol-hero.webp",
+        1024,
+        1536
+      ]
+    ]
+  }
+}

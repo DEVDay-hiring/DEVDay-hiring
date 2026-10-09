@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>HiRing · Piper 실행 테스트</title></head>
+  <body>
+    <main>
+      <header><span class="brand">Hi<span>:Ring</span></span><span class="badge">음성 합성 테스트</span></header>
+      <h1>내 기기에서 만드는<br /><span>트럼프 AI 음성</span></h1>
+      <p class="intro">영어 문장을 입력해 GPU와 CPU 실행을 비교하세요. 실제 트럼프의 녹음이 아닌 AI 합성 음성입니다.</p>
+      <section class="card">
+        <form id="synthesis-form">
+          <label for="text">읽을 영어 문장</label>
+          <textarea id="text" maxlength="400" rows="4">Hello! Let's practice English together. What would you like to talk about today?</textarea>
+          <div class="controls"><label for="mode">실행 방식</label><select id="mode"><option value="auto">GPU 우선 · 실패하면 CPU</option><option value="wasm">CPU로 실행 · 비교용</option></select></div>
+          <p class="note">처음 실행하면 모델 약 63.5MB와 런타임을 다운로드합니다. 지원되는 환경에서는 파일을 캐시합니다.</p>
+          <div class="buttons"><button type="submit" id="run">음성 만들기</button><button type="button" class="secondary" id="stop" disabled>중지</button></div>
+        </form>
+        <p id="status" role="status" aria-live="polite">입력 문장은 이 브라우저에서 처리합니다.</p>
+        <p id="failure" role="alert" hidden></p>
+        <audio id="audio" controls hidden></audio>
+        <dl id="metrics" hidden></dl>
+      </section>
+      <section class="fallback-card"><h2>실행이 어려운 기기도 대비합니다</h2><ol><li>GPU 사용 가능 → GPU와 필요한 CPU 연산을 함께 실행</li><li>GPU 사용 불가·실행 오류 → 전체 CPU 실행으로 전환</li><li>다운로드·CPU 실행도 실패 → 입력 문장 유지, 재시도 가능</li></ol><p>GPU 실행이 더 빠른지는 합성 시간과 음성 길이를 비교해 확인하세요.</p></section>
+      <details><summary>실행 기록 보기</summary><pre id="log"></pre></details>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
