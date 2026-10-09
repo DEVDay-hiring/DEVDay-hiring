@@ -8,9 +8,11 @@ type Hooks = {
   progress(message: string): void
   playbackBlocked(blocked: boolean): void
   playbackStarted(): void
+  playback(cue: SpeechCue | null): void
 }
 const noop = () => {}
-const empty: Hooks = { status: noop, notice: noop, backend: noop, progress: noop, playbackBlocked: noop, playbackStarted: noop }
+const empty: Hooks = { status: noop, notice: noop, backend: noop, progress: noop, playbackBlocked: noop, playbackStarted: noop, playback: noop }
+export type SpeechCue = { itemId: string; responseId: string; text: string; start: number; end: number; progress: number; completed: { itemId: string; start: number; end: number }[] }
 
 // Realtime handles microphone input and text; this adapter owns all audible output.
 export class PiperSpeech {
@@ -29,8 +31,9 @@ export class PiperSpeech {
   })
   private queue = new SpeechQueue({
     engine: this.engine,
-    play: (result, current, started) => this.play(result, current, started),
+    play: (result, current, started, progress) => this.play(result, current, started, progress),
     stopAudio: () => this.stopAudio(),
+    playback: cue => this.hooks.playback(cue),
     status: status => { if (status === 'idle') this.hooks.progress(''); this.hooks.status(status) },
     notice: message => this.hooks.notice(message),
   })
@@ -53,7 +56,7 @@ export class PiperSpeech {
     if (this.url) URL.revokeObjectURL(this.url)
     this.url = undefined
   }
-  private play(result: Result, current: () => boolean, started: () => void): Promise<void> {
+  private play(result: Result, current: () => boolean, started: () => void, reportProgress: (progress: number) => void): Promise<void> {
     this.stopAudio()
     const audio = this.audio
     if (!audio || !current()) return Promise.resolve()
@@ -62,17 +65,21 @@ export class PiperSpeech {
     return new Promise((resolve, reject) => {
       let began = false, settled = false
       const cleanup = () => {
-        audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); audio.removeEventListener('playing', playing)
+        audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); audio.removeEventListener('playing', playing); audio.removeEventListener('timeupdate', timeupdate)
         this.cancelPlayback = undefined
       }
-      const ended = () => { if (settled) return; settled = true; cleanup(); resolve() }
+      const ended = () => { if (settled) return; settled = true; reportProgress(1); cleanup(); resolve() }
       const failed = () => { if (settled) return; settled = true; cleanup(); reject(new Error('음성을 재생하지 못했습니다.')) }
+      const timeupdate = () => {
+        if (!current() || !Number.isFinite(audio.duration) || audio.duration <= 0) return
+        reportProgress(Math.max(0, Math.min(1, audio.currentTime / audio.duration)))
+      }
       const playing = () => {
         if (!current() || began) return
-        began = true; this.hooks.playbackBlocked(false); started(); this.hooks.playbackStarted()
+        began = true; this.hooks.playbackBlocked(false); started(); this.hooks.playbackStarted(); reportProgress(0)
       }
       this.cancelPlayback = ended
-      audio.addEventListener('ended', ended); audio.addEventListener('error', failed); audio.addEventListener('playing', playing)
+      audio.addEventListener('ended', ended); audio.addEventListener('error', failed); audio.addEventListener('playing', playing); audio.addEventListener('timeupdate', timeupdate)
       void audio.play().catch(error => {
         if (!current()) { ended(); return }
         if (error.name === 'NotAllowedError') this.hooks.playbackBlocked(true)

@@ -45,31 +45,36 @@ import asset42 from './assets/divider.svg'
 import asset43 from './assets/donald-hero-400.webp'
 import asset44 from './assets/donald-hero-800.webp'
 import asset45 from './assets/donald-hero.webp'
-import asset46 from './assets/einstein-card-224.webp'
-import asset47 from './assets/einstein-card.webp'
-import asset48 from './assets/einstein-hero-400.webp'
-import asset49 from './assets/einstein-hero-800.webp'
-import asset50 from './assets/einstein-hero.webp'
-import asset51 from './assets/elon-hero-400.webp'
-import asset52 from './assets/elon-hero-800.webp'
-import asset53 from './assets/elon-hero.webp'
-import asset54 from './assets/luna-hero-400.webp'
-import asset55 from './assets/luna-hero-800.webp'
-import asset56 from './assets/luna-hero.webp'
-import asset57 from './assets/obama-card-224.webp'
-import asset58 from './assets/obama-card.webp'
-import asset59 from './assets/obama-hero-400.webp'
-import asset60 from './assets/obama-hero-800.webp'
-import asset61 from './assets/obama-hero.webp'
-import asset62 from './assets/onboarding-people-724.webp'
-import asset63 from './assets/onboarding-people.webp'
-import asset64 from './assets/selection-arrow.svg'
-import asset65 from './assets/selection-chat.svg'
-import asset66 from './assets/sol-card-224.webp'
-import asset67 from './assets/sol-card.webp'
-import asset68 from './assets/sol-hero-400.webp'
-import asset69 from './assets/sol-hero-800.webp'
-import asset70 from './assets/sol-hero.webp'
+import asset46 from './assets/dooly-hero-400.webp'
+import asset47 from './assets/dooly-hero-800.webp'
+import asset48 from './assets/dooly-hero.webp'
+import asset49 from './assets/einstein-card-224.webp'
+import asset50 from './assets/einstein-card.webp'
+import asset51 from './assets/einstein-hero-400.webp'
+import asset52 from './assets/einstein-hero-800.webp'
+import asset53 from './assets/einstein-hero.webp'
+import asset54 from './assets/elon-hero-400.webp'
+import asset55 from './assets/elon-hero-800.webp'
+import asset56 from './assets/elon-hero.webp'
+import asset57 from './assets/elsa-hero-400.webp'
+import asset58 from './assets/elsa-hero.webp'
+import asset59 from './assets/luna-hero-400.webp'
+import asset60 from './assets/luna-hero-800.webp'
+import asset61 from './assets/luna-hero.webp'
+import asset62 from './assets/obama-card-224.webp'
+import asset63 from './assets/obama-card.webp'
+import asset64 from './assets/obama-hero-400.webp'
+import asset65 from './assets/obama-hero-800.webp'
+import asset66 from './assets/obama-hero.webp'
+import asset67 from './assets/onboarding-people-724.webp'
+import asset68 from './assets/onboarding-people.webp'
+import asset69 from './assets/selection-arrow.svg'
+import asset70 from './assets/selection-chat.svg'
+import asset71 from './assets/sol-card-224.webp'
+import asset72 from './assets/sol-card.webp'
+import asset73 from './assets/sol-hero-400.webp'
+import asset74 from './assets/sol-hero-800.webp'
+import asset75 from './assets/sol-hero.webp'
 
 const assets: Record<string, string> = {
   'atrium-bg.webp': asset2,
@@ -105,19 +110,21 @@ const assets: Record<string, string> = {
   'divider.svg': asset42,
   'donald-card.webp': asset8,
   'donald-hero.webp': asset45,
-  'einstein-card.webp': asset47,
-  'einstein-hero.webp': asset50,
+  'dooly-hero.webp': asset48,
+  'einstein-card.webp': asset50,
+  'einstein-hero.webp': asset53,
   'elon-card.webp': asset38,
-  'elon-hero.webp': asset53,
+  'elon-hero.webp': asset56,
+  'elsa-hero.webp': asset58,
   'luna-card.webp': asset40,
-  'luna-hero.webp': asset56,
-  'obama-card.webp': asset58,
-  'obama-hero.webp': asset61,
-  'onboarding-people.webp': asset63,
-  'selection-arrow.svg': asset64,
-  'selection-chat.svg': asset65,
-  'sol-card.webp': asset67,
-  'sol-hero.webp': asset70,
+  'luna-hero.webp': asset61,
+  'obama-card.webp': asset63,
+  'obama-hero.webp': asset66,
+  'onboarding-people.webp': asset68,
+  'selection-arrow.svg': asset69,
+  'selection-chat.svg': asset70,
+  'sol-card.webp': asset72,
+  'sol-hero.webp': asset75,
 }
 
 export const responsiveImages: Record<string, { srcSet: string; width: number; height: number }> = {
@@ -132,15 +139,17 @@ export const responsiveImages: Record<string, { srcSet: string; width: number; h
   [asset38]: { srcSet: `${asset37} 224w, ${asset38} 448w`, width: 448, height: 444 },
   [asset40]: { srcSet: `${asset39} 224w, ${asset40} 448w`, width: 448, height: 444 },
   [asset45]: { srcSet: `${asset43} 400w, ${asset44} 800w, ${asset45} 1086w`, width: 1086, height: 1448 },
-  [asset47]: { srcSet: `${asset46} 224w, ${asset47} 448w`, width: 448, height: 444 },
-  [asset50]: { srcSet: `${asset48} 400w, ${asset49} 800w, ${asset50} 1024w`, width: 1024, height: 1536 },
+  [asset50]: { srcSet: `${asset49} 224w, ${asset50} 448w`, width: 448, height: 444 },
   [asset53]: { srcSet: `${asset51} 400w, ${asset52} 800w, ${asset53} 1024w`, width: 1024, height: 1536 },
   [asset56]: { srcSet: `${asset54} 400w, ${asset55} 800w, ${asset56} 1024w`, width: 1024, height: 1536 },
-  [asset58]: { srcSet: `${asset57} 224w, ${asset58} 448w`, width: 448, height: 448 },
   [asset61]: { srcSet: `${asset59} 400w, ${asset60} 800w, ${asset61} 1024w`, width: 1024, height: 1536 },
-  [asset63]: { srcSet: `${asset62} 724w, ${asset63} 1448w`, width: 1448, height: 1086 },
-  [asset67]: { srcSet: `${asset66} 224w, ${asset67} 448w`, width: 448, height: 444 },
-  [asset70]: { srcSet: `${asset68} 400w, ${asset69} 800w, ${asset70} 1024w`, width: 1024, height: 1536 },
+  [asset63]: { srcSet: `${asset62} 224w, ${asset63} 448w`, width: 448, height: 448 },
+  [asset66]: { srcSet: `${asset64} 400w, ${asset65} 800w, ${asset66} 1024w`, width: 1024, height: 1536 },
+  [asset68]: { srcSet: `${asset67} 724w, ${asset68} 1448w`, width: 1448, height: 1086 },
+  [asset72]: { srcSet: `${asset71} 224w, ${asset72} 448w`, width: 448, height: 444 },
+  [asset75]: { srcSet: `${asset73} 400w, ${asset74} 800w, ${asset75} 1024w`, width: 1024, height: 1536 },
+  [asset48]: { srcSet: `${asset46} 400w, ${asset47} 800w, ${asset48} 1444w`, width: 1444, height: 1089 },
+  [asset58]: { srcSet: `${asset57} 400w, ${asset58} 627w`, width: 627, height: 1275 },
 }
 
 export function asset(name: string): string {

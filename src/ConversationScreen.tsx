@@ -2,8 +2,8 @@ import { getHealth } from '../shared/health.js'
 import './mvp.css'
 import AssetImage from './AssetImage'
 import { asset, devdayAsset } from './assets'
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
-import { RealtimeClient, type Config, type Snapshot } from '../shared/realtime-client.js'
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from 'react'
+import { RealtimeClient, type Config, type Snapshot, type SpeechCue } from '../shared/realtime-client.js'
 import { PiperSpeech } from './piper/speech'
 import { elapsed } from './time'
 
@@ -12,6 +12,43 @@ const modes: Record<string, string> = {
   idle: '대화 준비', connecting: '연결 중', ready: '당신의 차례예요', listening: '당신의 이야기를 듣고 있어요',
   transcribing: '이야기를 이해하고 있어요', thinking: '답변을 준비하고 있어요', searching: '참고 기사를 확인하고 있어요',
   synthesizing: '음성을 준비하고 있어요', speaking: 'Trump AI가 말하고 있어요', ended: '대화 종료', error: '연결 확인 필요',
+}
+
+function renderSpeechText(text: string, cue: SpeechCue, itemId: string): ReactNode {
+  if (!cue) return text
+  const isActiveItem = cue.itemId === itemId
+  const ranges = cue.completed
+    .filter(range => range.itemId === itemId && !(isActiveItem && range.start === cue.start && range.end === cue.end))
+    .map(range => ({ ...range, progress: 1 }))
+  if (isActiveItem) ranges.push({ itemId, start: cue.start, end: cue.end, progress: cue.progress })
+  ranges.sort((a, b) => a.start - b.start)
+  const nodes: ReactNode[] = []
+  let cursor = 0
+  ranges.forEach(range => {
+    const start = Math.max(cursor, Math.min(text.length, range.start))
+    const end = Math.max(start, Math.min(text.length, range.end))
+    if (start > cursor) nodes.push(text.slice(cursor, start))
+    if (end <= start) return
+    const segment = text.slice(start, end)
+    if (range.progress >= 1) {
+      nodes.push(<span className="speech-progress-complete" key={`spoken-${start}-${end}`}>{segment}</span>)
+    } else {
+      const progress = Math.max(0, Math.min(1, range.progress))
+      const softness = Math.min(0.06, Math.max(0.012, 4 / segment.length))
+      let offset = 0
+      const characters: ReactNode[] = []
+      for (const character of segment) {
+        const position = (offset + character.length / 2) / segment.length
+        const blend = Math.max(0, Math.min(1, (progress - position + softness) / (2 * softness)))
+        characters.push(<span className="speech-progress-char" style={{ '--speech-blend': `${blend * 100}%` } as CSSProperties} key={`char-${start + offset}`}>{character}</span>)
+        offset += character.length
+      }
+      nodes.push(<span key={`active-${start}-${end}`}>{characters}</span>)
+    }
+    cursor = end
+  })
+  if (cursor < text.length) nodes.push(text.slice(cursor))
+  return nodes
 }
 
 export default function ConversationScreen({ person, topic, onBack, onFinish, onPrepareFinish }: Props) {
@@ -47,7 +84,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
 
   return <>
     <button className="flow-logo" type="button" onClick={onBack} aria-label="인물 선택으로 돌아가기"><span className="brand"><span>Hi</span><b>:</b><span>Ring</span></span></button>
-    <div className="mvp-topline"><span className={`live-dot ${state.connected ? 'on' : ''}`} />{state.connected ? 'LIVE · 실시간 연결됨' : health}<span className="demo-chip">MVP DEMO</span></div>
+    <div className="mvp-topline"><span className={`live-dot ${state.connected ? 'on' : ''}`} />{state.connected ? 'LIVE · 실시간 연결됨' : health}</div>
     <aside className="mvp-person"><AssetImage sizes="90px" src={devdayAsset('conversation-trump.webp')} alt="" /><div><small>YOUR CONVERSATION PARTNER</small><h1>{person.name}</h1><p>AI persona · English conversation</p></div></aside>
     <aside className="mvp-settings">
       <h2>오늘의 대화</h2><p className="subtle">당신의 속도로, 자연스럽게.</p>
@@ -55,7 +92,6 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
         <label>대화 주제<input value={config.topic} maxLength={160} onChange={e => change('topic', e.target.value)} /></label>
         <label>영어 수준<select value={config.level} onChange={e => change('level', e.target.value)}><option value="beginner">Beginner · 편안하게</option><option value="intermediate">Intermediate · 자연스럽게</option><option value="advanced">Advanced · 깊이 있게</option></select></label>
         <label>언어 도움<select value={config.support} onChange={e => change('support', e.target.value)}><option value="english">English only</option><option value="bilingual">필요할 때 한국어 도움</option></select></label>
-        <label>Piper 트럼프 음성<select value={config.speechMode} onChange={e => change('speechMode', e.target.value)}><option value="auto">GPU 우선 · 실패하면 CPU</option><option value="wasm">CPU로 실행</option><option value="off">음성 끄기 · 자막만</option></select></label>
         <label>표현 교정<select value={config.correction} onChange={e => change('correction', e.target.value)}><option value="on_request">요청할 때만</option><option value="gentle">대화 중 가볍게</option></select></label>
         <label><span>나의 관심사 <small>선택</small></span><input value={config.learnerContext} maxLength={500} onChange={e => change('learnerContext', e.target.value)} placeholder="예: 컴퓨터공학, 여행, AI" /></label>
       </fieldset>
@@ -69,7 +105,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
     <div className={`call-video mvp-video ${state.status === 'speaking' ? 'is-speaking' : ''}`}>
       <AssetImage className="mvp-portrait" sizes="(max-width: 799px) 440px, (min-aspect-ratio: 16/9) 53vh, 30vw" fetchPriority="high" src={asset('donald-hero.webp')} alt="트럼프를 모티브로 한 AI 대화 캐릭터" />
       <div className="mvp-video-label"><span className="live-dot on" />TRUMP AI<span>AI SIMULATION</span></div>
-      <div className="mvp-video-caption"><small>{modes[state.status] || state.status}</small><p>{lastAssistant?.text || 'A real conversation. A little more confidence.'}</p>{lastAssistant?.interrupted && <small>발화 중단 · 자막에 미재생 내용이 포함될 수 있습니다.</small>}</div>
+      <div className="mvp-video-caption"><small>{modes[state.status] || state.status}</small><p>{lastAssistant ? renderSpeechText(lastAssistant.text, state.speechCue, lastAssistant.id) : 'A real conversation. A little more confidence.'}</p>{lastAssistant?.interrupted && <small>발화 중단 · 자막에 미재생 내용이 포함될 수 있습니다.</small>}</div>
       {!state.connected && <div className="mvp-connect-overlay">
         <span className="connect-mark">Hi<span>:</span>Ring</span><h2>{connecting ? 'Trump AI를 만나고 있어요' : 'Ready to say hello?'}</h2>
         <p>{connecting ? '마이크 권한을 허용해 주세요. 잠시 후 대화가 시작됩니다.' : '영어로 말을 걸어보세요. 질문도, 가벼운 일상 이야기도 좋아요.'}</p>
@@ -95,7 +131,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
       <div className="mvp-tabs" role="tablist" aria-label="대화 정보"><button role="tab" aria-selected={tab === 'conversation'} onClick={() => setTab('conversation')}>대화 기록</button><button role="tab" aria-selected={tab === 'sources'} onClick={() => setTab('sources')}>참고 기사 <b>{state.sources.length}</b></button><button role="tab" aria-selected={tab === 'logs'} onClick={() => setTab('logs')}>연결</button></div>
       {tab === 'conversation' ? <div className="mvp-messages" ref={transcriptRef} role="log" aria-label="실시간 대화 기록">
         {!state.messages.length && <div className="mvp-empty"><span>“</span><h3>시작은 가벼운 인사로.</h3><p>실제 대화 자막이 이곳에 나타납니다.</p><button onClick={() => setDraft('Hi Trump. I have a question. Why do people call it AI instead of SI?')}>AI와 SI에 대해 물어보기 ↗</button></div>}
-        {state.messages.map(m => <article className={`mvp-message ${m.role}`} key={m.id}><small>{m.role === 'user' ? 'You' : 'Trump AI'}{m.partial ? ' · …' : ''}{m.interrupted ? ' · 발화 중단' : ''}</small><p>{m.text}</p>{m.interrupted && <em>자막에 듣지 못한 내용이 포함될 수 있습니다.</em>}</article>)}
+        {state.messages.map(m => <article className={`mvp-message ${m.role}`} key={m.id}><small>{m.role === 'user' ? 'You' : 'Trump AI'}{m.partial ? ' · …' : ''}{m.interrupted ? ' · 발화 중단' : ''}</small><p>{m.role === 'assistant' ? renderSpeechText(m.text, state.speechCue, m.id) : m.text}</p>{m.interrupted && <em>자막에 듣지 못한 내용이 포함될 수 있습니다.</em>}</article>)}
       </div> : tab === 'sources' ? <div className="mvp-source-list"><p className="subtle">Vector Store에서 찾은 업로드 자료입니다. 기사의 주장이 독립적으로 검증되었다는 뜻은 아닙니다.</p>{!state.sources.length && <p>AI/SI 또는 실제 발언에 대해 물어보면 검색 결과가 표시됩니다.</p>}{state.sources.map(s => <article key={s.filename}><span>REFERENCE</span><h3>{s.filename}</h3><p>{s.text}</p></article>)}</div> : <div className="mvp-log-list"><dl><dt>연결 시간</dt><dd>{state.connectionMs ?? '—'} ms</dd><dt>최근 응답 지연</dt><dd>{state.latencyMs ?? '—'} ms</dd><dt>자료 검색</dt><dd>{state.searchCount}회</dd><dt>음성 실행</dt><dd>{state.voiceBackend === 'webgpu+wasm' ? 'GPU + CPU' : state.voiceBackend === 'wasm' ? 'CPU' : config.speechMode === 'off' ? '자막만' : '준비 전'}</dd></dl><p className="subtle">브라우저 마이크 → WebRTC → Realtime API<br />답변 텍스트 → 브라우저 Piper 음성<br />API 키는 서버에만 보관됩니다.</p>{state.logs.map((log, i) => <p key={i}><time>{log.time}</time> {log.type}{log.detail && <span>{log.detail}</span>}</p>)}</div>}
       <footer><span className={`live-dot ${state.connected ? 'on' : ''}`} />{modes[state.status] || state.status}</footer>
     </aside>

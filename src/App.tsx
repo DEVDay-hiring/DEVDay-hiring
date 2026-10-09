@@ -86,15 +86,15 @@ const people: Person[] = [
     prompts: ['시간과 공간의 관계에 대해 물어보기', '상대성이론을 쉽게 설명해 달라고 하기', '창의적인 사고와 호기심에 대해 질문하기'],
   },
   {
-    id: 'sol',
-    name: 'AI 캐릭터 ‘SOL’',
-    profileName: 'SOL',
+    id: 'elsa',
+    name: '엘사',
+    profileName: '엘사',
     category: '가상 캐릭터',
     filters: ['가상 캐릭터'],
-    image: asset('sol-card.webp'),
-    hero: asset('sol-hero.webp'),
-    role: 'AI 영어 회화 파트너',
-    description: '일상, 취미, 공부 등 다양한 주제로\nSOL과 편하게 대화해보세요.\n친근한 대화와 자연스러운 피드백으로\n부담 없이 영어 말하기를 연습할 수 있어요.',
+    image: asset('elsa-hero.webp'),
+    hero: asset('elsa-hero.webp'),
+    role: '아렌델의 눈의 여왕',
+    description: '일상, 취미, 겨울 왕국 이야기 등\n엘사와 편하게 대화해보세요.\n차분한 대화와 자연스러운 피드백으로\n부담 없이 영어 말하기를 연습할 수 있어요.',
     tags: ['일상', '취미', '학습', '자기개발', '문화'],
     prompts: ['오늘 하루 있었던 일 이야기하기', '좋아하는 취미와 관심사 나누기', '영어로 자기소개 연습하기'],
   },
@@ -217,7 +217,7 @@ function App() {
                   </button>
                 ))}
               </div>
-              <div className="person-hero" aria-hidden="true">
+              <div className={`person-hero person-hero-${selected.id}`} aria-hidden="true">
                 <AssetImage src={selected.hero} sizes={heroSizes} fetchPriority="high" alt="" />
               </div>
               <aside className="profile-panel" aria-label={`${selected.name} 소개`}>
