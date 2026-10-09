@@ -33,7 +33,9 @@
 .mvp-video.is-speaking { box-shadow: 0 0 0 3px #73a0ff, 0 18px 70px #20468125; }
 .mvp-video-label { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 800; color: #24416c; letter-spacing: 1px; }
 .mvp-video-label > span:last-child { margin-left: auto; padding: 8px 12px; background: #ffffffc9; border-radius: 8px; font-size: 11px; letter-spacing: 1.6px; }
-.mvp-photo-portrait ~ .mvp-video-label { padding: 6px 8px; border-radius: 6px; background: #111111a6; color: #fff; letter-spacing: 0; }
+.mvp-video-identity { display: inline-flex; align-items: center; gap: 12px; }
+.mvp-photo-portrait ~ .mvp-video-label { top: 8px; color: #fff; letter-spacing: 0; }
+.mvp-photo-portrait ~ .mvp-video-label .mvp-video-identity { padding: 6px 8px; border-radius: 6px; background: #111111a6; }
 .mvp-photo-portrait ~ .mvp-video-label > span:last-child { color: #24416c; letter-spacing: 0; }
 .mvp-video-caption { position: absolute; bottom: 0; left: 0; right: 0; padding: 60px 32px 25px; color: white; background: linear-gradient(transparent, #102855e8); }
 .mvp-video-caption small { font-size: 13px; opacity: .8; }
@@ -95,3 +97,6 @@
 @media (prefers-reduced-motion: reduce) { .mvp-bars.active i { animation: none; } }
 
 .mvp-voice-notice { position: fixed; z-index: 50; bottom: 20px; left: 50%; transform: translateX(-50%); max-width: min(90vw, 640px); padding: 12px 18px; border-radius: 12px; background: #edf3ff; color: #284e91; font-size: 13px; box-shadow: 0 4px 20px #163e7718; pointer-events: none; }
+@media (max-width: 799px) {
+  .mvp-voice-notice { position: static; order: 3; width: 100%; max-width: none; transform: none; border-radius: 8px; box-shadow: none; }
+}

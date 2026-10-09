@@ -100,20 +100,36 @@ Google TTS 키는 사용하지 않습니다. 사진 립싱크에는 별도의 �
 ### 사진 립싱크 (기본값)
 
 `VITE_LIPSYNC_MODE=photo`가 기본값입니다. 기존 `VITE_MUSETALK_WS_URL` 설정이 남아 있어도 사진 모드에서는 GPU 서버에 연결하거나 음성을 전송하지 않습니다.
-브라우저에서 합성 PCM의 40ms 구간별 세기를 계산하고, `audio.currentTime`에 맞춰 입 닫음·조금 열림·크게 열림의 세 사진을 표시합니다.
+브라우저에서 합성 PCM의 40ms 구간별 세기로 입 벌림 정도를 계산하고, `audio.currentTime`에 맞춰 사진을 표시합니다.
 과거 프레임을 쌓지 않고 현재 시각의 사진만 그리며, 무음·일시정지 시 입을 닫고 발화 종료·중단 시 기본 사진으로 돌아갑니다.
-사진이 늦게 로딩되거나 실패해도 원래 Piper 음성은 그대로 재생합니다. 이는 음량 기반 근사 표현이며 음소 인식이나 MuseTalk 영상 생성은 아닙니다.
+사진이 늦게 로딩되거나 실패해도 원래 Piper 음성은 그대로 재생합니다. MuseTalk 영상 생성이나 별도의 음성 인식은 사용하지 않습니다.
 기존 문장별 Piper 합성 대기나 첫 모델 다운로드 지연은 별개입니다.
 
-`src/assets/photo-trump/{closed,small,open}.webp`는 제공된 25fps 영상의 164·166·170번 프레임에서 추출한 880×660 사진입니다(총 약 456KB).
-머리·눈·배경이 흔들리지 않도록 상안면을 정렬한 후 입 주변만 합성하고, 방송 자막과 플레이어 UI는 잘라냈습니다.
-같은 영상에서 다시 만들려면 OpenCV와 NumPy가 설치된 환경에서 아래를 실행합니다. Python은 에셋 준비에만 필요하며 앱 실행·배포에는 필요하지 않습니다.
+발음 정보는 영어 철자 추측이 아닌, 해당 Piper 발화의 음소 ID와 모델이 사용한 발음 길이에서 얻습니다.
+`scripts/piper-durations.mjs`가 빌드 때 ONNX의 기존 `w_ceil` 중간값을 `phoneme_durations` 출력으로 노출합니다.
+원본 ONNX 파일·가중치·음성 계산 경로는 그대로 두고 생성된 배포 파일만 바꾸며, 모델 캐시 버전도 자동 갱신합니다.
+발음 길이로 오디오 정렬을 만드는 근거는 [Piper의 VITS 추론 코드](https://github.com/rhasspy/piper/blob/master/src/python/piper_train/vits/models.py#L634)입니다.
+
+`shared/visemes.js`는 아·에·이·오·우 계열, `m/b/p` 입 닫음, 복합 모음을 시각적 입 모양으로 묶습니다.
+`PhotoLipSync`의 `PhotoAvatar.vowels`에 각 모음의 `[조금 열림, 크게 열림]` 사진을 지정하면 음소 형태와 음성 세기를 조합합니다.
+모음 경계는 최대 70ms 구간에서 입 주변만 섞으며 머리·배경 픽셀은 고정합니다. 무음은 모음보다 우선합니다.
+타이밍 정보나 특정 모음 이미지가 없으면 기본 세 단계 입 모양을 사용합니다.
+
+`src/assets/photo-podium/`은 사용자가 제공한 750×450 연단 사진으로 만든 13개 입 모양입니다.
+닫힌 입 전체 사진 한 장과 67×51 입 주변 조각 12장(기본 벌림 2개 + 모음 5종 × 벌림 2개)을 사용합니다(총 약 263KB).
+전체 배경을 반복 다운로드하지 않으며, 서로 다른 사진의 머리·눈·배경을 섞지 않습니다.
+이미지 편집은 사용자 승인하에 `gpt-image-2` API로 에셋 준비 시에만 진행했습니다. 대화·빌드·배포 중에는 이미지 API 비용이나 추가 키가 필요하지 않습니다.
+제작 프롬프트와 출처·좌표 안내는 [에셋 설명](src/assets/photo-podium/README.md)에 있습니다.
+다시 준비하려면 Pillow·OpenCV·NumPy와 원본 사진, 별도의 이미지 편집 결과가 필요합니다. Python은 에셋 준비에만 필요합니다.
 
 ```bash
-python scripts/extract-photo-avatar.py --video ../lip-sync-service/samples/input_video/avatar_25fps.mp4
+python scripts/prepare-photo-visemes.py prepare
+# 생성된 프롬프트와 마스크로 이미지 편집을 진행한 다음:
+python scripts/prepare-photo-visemes.py composite
 ```
 
-제공된 원본 영상의 이용·재배포 권한은 별도로 확인해야 합니다. 다른 사진으로 교체할 때는 세 장의 크기와 얼굴 위치를 동일하게 맞추세요.
+제공된 원본 사진의 이용·재배포 권한은 별도로 확인해야 합니다. 다른 사진으로 교체할 때는 입 위치와 기본 이미지·패치를 함께 변경하세요.
+이전 영상 캡처 에셋과 `scripts/extract-photo-avatar.py`는 참고용으로 남겨두며 현재 기본 사진 모드에서는 사용하지 않습니다.
 `VITE_LIPSYNC_MODE=off`는 정적 이미지, `musetalk`는 아래 GPU 방식입니다. Vite 환경변수이므로 로컬에서는 재시작, Vercel에서는 빌드 환경 설정 후 재배포해야 합니다.
 
 ### MuseTalk 립싱크 연결
@@ -241,14 +257,17 @@ npm run test:piper-ui
 # npm run dev 실행 후 검사합니다. 기본 주소는 http://localhost:5174 입니다.
 npm run test:lipsync-ui
 npm run test:photo-lipsync-ui
+npm run test:photo-visemes-ui
+npm run test:viseme-piper-ui
 ```
 
 단위 테스트는 API를 호출하지 않습니다. 기본 브라우저 검사는 실제 마이크와 유료 세션을 사용하지 않고
 연결 실패·재시도·빈 평가·화면 이동·모바일·이미지 로딩·코드 분리를 확인합니다.
 Piper 브라우저 검사는 실제 ONNX 모델로 GPU·CPU 음성 생성과 재생·중단·실패 복구를 확인합니다.
 이 검사에서 Realtime 연결과 RAG API는 모의 응답이며, 유료 API는 호출하지 않습니다.
-사진 립싱크 검사는 세 입 모양과 고정 배경 픽셀, 오디오 시각 추적, 로딩 실패·중단·자동 재생 복구를 확인합니다.
-실제 Piper 음성으로 데스크톱·모바일 화면도 검사하며 캡처는 `test-results/photo-lipsync-*.png`에 저장합니다.
+사진 립싱크 검사는 기본 세 입 모양·모음 패치 10장과 고정 배경 픽셀, 오디오 시각 추적, 로딩 실패·중단·자동 재생 복구를 확인합니다.
+실제 Piper 음성으로 데스크톱·390px/320px 모바일 화면과 안내문 겹침도 검사하며 캡처는 `test-results/photo-lipsync-*.png`에 저장합니다.
+모음 렌더러 검사는 구별 가능한 테스트용 입 이미지를 사용합니다. 별도 실제 Piper 검사는 CPU·자동 모드의 발음 시각과 PCM 길이 일치를 확인하며 유료 API를 호출하지 않습니다.
 테스트 서버 주소는 `TEST_URL=http://localhost:5174`처럼 변경할 수 있습니다.
 `LIVE_API=1 npm run test:browser`는 설정된 실제 OpenAI API와 합성 음성 입력으로 연결·RAG·끼어들기·평가를 검사하며 API 비용이 발생합니다.
 

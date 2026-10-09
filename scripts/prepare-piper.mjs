@@ -2,23 +2,25 @@ import { createHash } from 'node:crypto';
 import { copyFile, mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { withPhonemeDurations } from './piper-durations.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const modelRoot = path.join(root, 'piper_trump_inference');
 const modelName = 'en_US-trump_ai_demo-medium.onnx';
-const model = await readFile(path.join(modelRoot, modelName)).catch(() => {
+const sourceModel = await readFile(path.join(modelRoot, modelName)).catch(() => {
   if (process.env.VERCEL === '1' || process.argv.includes('--require-model')) throw new Error('piper_trump_inference 모델 폴더를 준비하세요.');
   console.warn('Piper 모델이 없습니다. 음성 에셋을 배포하기 전까지 자막으로 대화합니다.');
   return null;
 });
-if (!model) process.exit(0);
+if (!sourceModel) process.exit(0);
+const model = withPhonemeDurations(sourceModel);
 const modelConfig = await readFile(path.join(modelRoot, `${modelName}.json`));
 const sha256 = createHash('sha256').update(model).digest('hex');
 const version = createHash('sha256').update(model).update(modelConfig).digest('hex').slice(0, 16);
 const modelDir = path.join(root, 'public/piper/models', version);
 const runtimeDir = path.join(root, 'public/piper/runtime');
 await Promise.all([mkdir(modelDir, { recursive: true }), mkdir(runtimeDir, { recursive: true })]);
-await Promise.all([copyFile(path.join(modelRoot, modelName), path.join(modelDir, modelName)),
+await Promise.all([writeFile(path.join(modelDir, modelName), model),
   copyFile(path.join(modelRoot, `${modelName}.json`), path.join(modelDir, `${modelName}.json`))]);
 await writeFile(path.join(root, 'public/piper/models/manifest.json'), JSON.stringify({
   version, model: `models/${version}/${modelName}`, config: `models/${version}/${modelName}.json`, bytes: model.byteLength, sha256,

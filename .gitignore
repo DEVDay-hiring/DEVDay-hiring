@@ -165,3 +165,8 @@ piper_trump_inference/*
 
 # Generated browser voice assets (prepared during build)
 public/piper/
+
+# Local image-edit inputs, prompts and full-resolution API outputs
+/tmp/imagegen/
+/output/imagegen/
+/avatar-source.*

@@ -19,7 +19,7 @@ try {
   await page.goto(base + '/#conversation');
   await page.locator('.mvp-lipsync').waitFor();
   const poses = await page.evaluate(async () => {
-    const { PhotoLipSync, mouthCues } = await import('/src/lipsync/photo.ts');
+    const { PhotoLipSync, mouthCues, photoAvatar } = await import('/src/lipsync/photo.ts');
     const { lipSyncMode } = await import('/src/lipsync/mode.ts');
     const check = (condition, message) => { if (!condition) throw new Error(message); };
     const waitFor = async predicate => {
@@ -48,7 +48,7 @@ try {
     try {
       const done = client.play(pcm, rate, () => current, () => clock);
       await waitFor(() => canvas.dataset.mouthState === 'closed');
-      check(canvas.width === 880 && canvas.height === 660, 'Source photo dimensions must be preserved');
+      check(canvas.width === 750 && canvas.height === 450, 'Source photo dimensions must be preserved');
       const pixels = () => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
       const closed = pixels();
       check(closed.some((value, i) => i % 4 !== 3 && value > 100), 'Photo canvas must not be blank');
@@ -63,7 +63,8 @@ try {
         for (let i = 0; i < left.length; i += 4) {
           if (left[i] === right[i] && left[i + 1] === right[i + 1] && left[i + 2] === right[i + 2]) continue;
           const x = (i / 4) % canvas.width, y = Math.floor(i / 4 / canvas.width);
-          if (x >= 360 && x <= 510 && y >= 285 && y <= 385) mouth++;
+          const [mx, my, mw, mh] = photoAvatar.mouth;
+          if (x >= mx && x < mx + mw && y >= my && y < my + mh) mouth++;
           else background++;
         }
         check(mouth > 100, 'Mouth states must have visibly different pixels');
@@ -71,6 +72,17 @@ try {
         return mouth;
       };
       const changedPixels = [compare(closed, small), compare(small, open)];
+      await waitFor(() => client.vowelImages.size === 10);
+      const vowelChanges = [];
+      for (const [key, image] of client.vowelImages) {
+        const sample = document.createElement('canvas'); sample.width = canvas.width; sample.height = canvas.height;
+        const context = sample.getContext('2d');
+        context.putImageData(new ImageData(new Uint8ClampedArray(closed), canvas.width, canvas.height), 0, 0);
+        const [x, y, width, height] = photoAvatar.mouth;
+        context.drawImage(image, photoAvatar.patches ? 0 : x, photoAvatar.patches ? 0 : y, width, height, x, y, width, height);
+        const variant = context.getImageData(0, 0, sample.width, sample.height).data;
+        vowelChanges.push({ key, pixels: compare(closed, variant) });
+      }
       clock = null;
       await waitFor(() => canvas.dataset.mouthState === 'closed');
       clock = 1.3;
@@ -95,7 +107,7 @@ try {
       check(active.length === events && canvas.dataset.mouthState === 'small', 'Old image loading must not affect the new turn');
       current = false; await replacement;
       check(active.at(-1) === false, 'Interruption must stop the mouth animation');
-      return { changedPixels, backgroundChangedPixels: 0, states: ['closed', 'small', 'open'] };
+      return { changedPixels, vowelChanges, backgroundChangedPixels: 0, states: ['closed', 'small', 'open'] };
     } finally { client.dispose(); }
   });
   console.log(JSON.stringify(poses));
@@ -180,16 +192,19 @@ try {
     PiperClient.prototype.synthesize = function(text) { return synthesize.call(this, text, 'wasm'); };
     window.photoTestSockets = 0;
     window.WebSocket = class { constructor() { window.photoTestSockets++; throw new Error('Photo mode opened a WebSocket'); } };
-    window.photoTestStates = [];
+    window.photoTestStates = []; window.photoTestVisemes = [];
     const canvas = document.querySelector('.mvp-lipsync');
     new MutationObserver(() => {
       if (canvas.dataset.mouthState) window.photoTestStates.push(canvas.dataset.mouthState);
+      if (canvas.dataset.viseme) window.photoTestVisemes.push(canvas.dataset.viseme);
     }).observe(canvas, { attributes: true, attributeFilter: ['data-mouth-state'] });
   });
   await page.getByRole('button', { name: '마이크 없이 텍스트로 시작' }).click();
-  for (const [label, viewport] of [['desktop', { width: 1512, height: 982 }], ['mobile', { width: 390, height: 844 }]]) {
+  await page.locator('#conversation-input').fill('I enjoy learning English.');
+  await page.getByRole('button', { name: 'Send ↗' }).click();
+  for (const [label, viewport] of [['desktop', { width: 1512, height: 982 }], ['mobile', { width: 390, height: 844 }], ['mobile-small', { width: 320, height: 740 }]]) {
     await page.setViewportSize(viewport);
-    if (label === 'mobile') {
+    if (label !== 'desktop') {
       await page.locator('#conversation-input').fill('I enjoy learning English.');
       await page.getByRole('button', { name: 'Send ↗' }).click();
     }
@@ -202,7 +217,11 @@ try {
       const canvas = document.querySelector('.mvp-lipsync'), image = document.querySelector('.mvp-photo-portrait');
       const canvasRect = canvas.getBoundingClientRect(), imageRect = image.getBoundingClientRect();
       const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      const notice = document.querySelector('.mvp-voice-notice')?.getBoundingClientRect();
+      const controls = document.querySelector('.mvp-call-controls').getBoundingClientRect();
       return { overflow: document.documentElement.scrollWidth > innerWidth, width: video.width, height: video.height,
+        noticeOverlapsControls: Boolean(notice && notice.left < controls.right && notice.right > controls.left
+          && notice.top < controls.bottom && notice.bottom > controls.top),
         matchingFrames: Math.abs(canvasRect.width - imageRect.width) < 1 && Math.abs(canvasRect.height - imageRect.height) < 1
           && Math.abs(canvasRect.left - imageRect.left) < 1 && Math.abs(canvasRect.top - imageRect.top) < 1,
         nonblank: pixels.some((value, i) => i % 4 !== 3 && value > 100), sockets: window.photoTestSockets };
@@ -210,12 +229,16 @@ try {
     assert.equal(geometry.overflow, false, label + ': horizontal overflow');
     assert.equal(geometry.matchingFrames, true, label + ': static/animated portrait shifted');
     assert.equal(geometry.nonblank, true, label + ': blank canvas');
+    assert.equal(geometry.noticeOverlapsControls, false, label + ': notice covers the call controls');
     assert.equal(geometry.sockets, 0, label + ': GPU connection attempted');
     await page.screenshot({ path: `test-results/photo-lipsync-${label}.png`, fullPage: true });
     console.log(JSON.stringify({ viewport: label, ...geometry }));
   }
   const states = await page.evaluate(() => [...new Set(window.photoTestStates)]);
   assert.deepEqual(states.sort(), ['closed', 'open', 'small']);
+  const shapes = await page.evaluate(() => [...new Set(window.photoTestVisemes)]);
+  assert.ok(shapes.filter(shape => ['a', 'e', 'i', 'o', 'u'].includes(shape)).length >= 3, 'Real speech must select the new vowel assets');
+  console.log(JSON.stringify({ realSpeechVisemes: shapes }));
   await page.evaluate(() => window.syntheticPeer.channel.emit({ type: 'input_audio_buffer.speech_started', item_id: 'interrupt' }));
   await page.waitForFunction(() => !document.querySelector('.mvp-video.has-lipsync') && document.querySelector('audio').paused);
   assert.deepEqual(errors, []);

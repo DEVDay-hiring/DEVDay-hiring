@@ -106,8 +106,12 @@ export class PiperSpeech {
         began = true; this.hooks.playbackBlocked(false); started(); this.hooks.playbackStarted(); reportProgress(0)
         progressFrame = requestAnimationFrame(updateProgress)
         if (this.videoEnabled) {
-          void this.video.play(pcm, result.sampleRate, () => current() && !settled,
-            () => audio.paused || audio.ended ? null : audio.currentTime).catch(() => {
+          const videoCurrent = () => current() && !settled
+          const clock = () => audio.paused || audio.ended ? null : audio.currentTime
+          const playback = this.video instanceof PhotoLipSync
+            ? this.video.play(pcm, result.sampleRate, videoCurrent, clock, result.visemes)
+            : this.video.play(pcm, result.sampleRate, videoCurrent, clock)
+          void playback.catch(() => {
             if (settled || !current()) return
             this.videoEnabled = false
             this.hooks.notice(this.videoMode === 'musetalk'

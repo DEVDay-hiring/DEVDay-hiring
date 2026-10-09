@@ -1,6 +1,7 @@
 import { withCpuFallback } from './fallback.js';
+import type { VisemeCue } from '../../shared/visemes.js';
 
-export type Result = { backend: string; pcm: Float32Array; sampleRate: number; inferenceMs: number; phonemizeMs: number; phonemes: number };
+export type Result = { backend: string; pcm: Float32Array; sampleRate: number; inferenceMs: number; phonemizeMs: number; phonemes: number; visemes?: VisemeCue[] };
 export class PiperClient {
   private worker?: Worker;
   private mode = '';

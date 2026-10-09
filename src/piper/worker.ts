@@ -1,9 +1,11 @@
 /// <reference types="@webgpu/types" />
 /// <reference lib="webworker" />
 import { finitePcm } from './fallback.js';
+import { phonemeTimeline } from '../../shared/visemes.js';
 import type * as ORT from 'onnxruntime-web';
 
 type Config = { audio: { sample_rate: number }; espeak: { voice: string }; num_speakers: number;
+  phoneme_id_map: Record<string, number[]>; hop_length: number;
   inference: { noise_scale: number; length_scale: number; noise_w: number } };
 type Manifest = { version: string; model: string; config: string; bytes: number };
 const scope = self as unknown as DedicatedWorkerGlobalScope;
@@ -106,11 +108,19 @@ scope.onmessage = async ({ data }) => {
     report({ type: 'progress', stage: 'inference', backend });
     const start = performance.now();
     const outputs = await session!.run(feeds);
-    const tensor = outputs.output;
-    const pcm = Float32Array.from(finitePcm(await tensor.getData() as Float32Array));
-    tensor.dispose();
+    let pcm: Float32Array;
+    let visemes: ReturnType<typeof phonemeTimeline> = [];
+    try {
+      pcm = Float32Array.from(finitePcm(await outputs.output.getData() as Float32Array));
+      if (outputs.phoneme_durations) {
+        try {
+          visemes = phonemeTimeline(ids, await outputs.phoneme_durations.getData() as Float32Array,
+            config.phoneme_id_map, pcm.length, config.audio.sample_rate, config.hop_length);
+        } catch { /* Optional visual timing must never prevent speech. */ }
+      }
+    } finally { Object.values(outputs).forEach(tensor => tensor.dispose()); }
     report({ type: 'result', backend, pcm, sampleRate: config.audio.sample_rate,
-      phonemizeMs, inferenceMs: performance.now() - start, phonemes: ids.length });
+      phonemizeMs, inferenceMs: performance.now() - start, phonemes: ids.length, visemes });
   } catch (error) {
     report({ type: 'failure', phase, backend, retryOnCpu: backend === 'webgpu+wasm' && ['gpu', 'inference'].includes(phase),
       message: error instanceof Error ? error.message : String(error) });

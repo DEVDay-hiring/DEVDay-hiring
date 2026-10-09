@@ -24,8 +24,9 @@ try {
   await installSyntheticPeer(page, { duplicateEvents: true, toolPreamble: true });
   await page.goto(`http://127.0.0.1:${server.address().port}/#conversation`);
   await page.getByRole('button', { name: '마이크 없이 텍스트로 시작' }).click();
-  await page.locator('.mvp-message.assistant').filter({ hasText: 'Hello!' }).waitFor();
-  assert.equal(await page.locator('.mvp-message.assistant').count(), 1);
+  await page.locator('#conversation-input:enabled').waitFor();
+  assert.equal(await page.locator('.mvp-message.assistant').count(), 0, 'wait for the learner instead of greeting first');
+  assert.equal(await page.evaluate(() => window.syntheticEvents.filter(event => event.type === 'response.create').length), 0);
 
   await page.evaluate(() => {
     const emit = event => window.syntheticPeer.channel.emit(event);
@@ -45,11 +46,11 @@ try {
     await page.locator('.mvp-message.assistant').filter({ hasText: expected }).waitFor();
   }
   assert.equal(await page.locator('.mvp-message.user').count(), 2);
-  assert.equal(await page.locator('.mvp-message.assistant').count(), 3, 'one welcome and one answer per question');
+  assert.equal(await page.locator('.mvp-message.assistant').count(), 2, 'one answer per question without an unsolicited welcome');
   assert.equal(await page.getByText('Lookup preamble:', { exact: false }).count(), 0);
   assert.equal(await page.getByText('English conversation practice.', { exact: false }).count(), 0);
   const requests = await page.evaluate(() => window.syntheticEvents.filter(event => event.type === 'response.create').length);
-  assert.equal(requests, 4, 'welcome, direct answer, silent search pass, grounded answer');
+  assert.equal(requests, 3, 'direct answer, silent search pass, grounded answer');
   assert.deepEqual(errors, []);
   console.log('PASS: built conversation UI ignores prompt echoes and duplicate events, and displays only one final answer per question.');
 } finally {

@@ -19,7 +19,9 @@
     "prebuild": "npm run prepare:piper",
     "test:piper-ui": "node tests/piper-conversation-ui.mjs",
     "test:lipsync-ui": "node tests/lipsync-ui.mjs",
-    "test:photo-lipsync-ui": "node tests/photo-lipsync-ui.mjs"
+    "test:photo-lipsync-ui": "node tests/photo-lipsync-ui.mjs",
+    "test:viseme-piper-ui": "node tests/viseme-piper-ui.mjs",
+    "test:photo-visemes-ui": "node tests/photo-visemes-ui.mjs"
   },
   "dependencies": {
     "@diffusionstudio/piper-wasm": "1.0.0",

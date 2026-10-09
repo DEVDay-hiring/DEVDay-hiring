@@ -122,7 +122,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
     <div className={`call-video mvp-video ${state.status === 'speaking' ? 'is-speaking' : ''} ${state.videoActive ? 'has-lipsync' : ''}`}>
       <AssetImage className={`mvp-portrait ${lipSyncMode === 'photo' ? 'mvp-photo-portrait' : ''}`} sizes="(max-width: 799px) 440px, (min-aspect-ratio: 16/9) 53vh, 30vw" fetchPriority="high" src={lipSyncMode === 'photo' ? photoFrames[0] : asset('donald-hero.webp')} alt="트럼프를 모티브로 한 AI 대화 캐릭터" />
       <canvas ref={client.attachVideo} className="mvp-lipsync" aria-label="Trump AI 립싱크 영상" />
-      <div className="mvp-video-label"><span className="live-dot on" />TRUMP AI<span>AI SIMULATION</span></div>
+      <div className="mvp-video-label"><span className="mvp-video-identity"><span className="live-dot on" />TRUMP AI</span><span>AI SIMULATION</span></div>
       <div className="mvp-video-caption"><small>{modes[state.status] || state.status}</small><p>{lastAssistant ? renderSpeechText(lastAssistant.text, state.speechCue, lastAssistant.id) : 'A real conversation. A little more confidence.'}</p>{lastAssistant?.interrupted && <small>발화 중단 · 자막에 미재생 내용이 포함될 수 있습니다.</small>}</div>
       {!state.connected && <div className="mvp-connect-overlay">
         <span className="connect-mark">Hi<span>:</span>Ring</span><h2>{connecting ? 'Trump AI를 만나고 있어요' : 'Ready to say hello?'}</h2>
