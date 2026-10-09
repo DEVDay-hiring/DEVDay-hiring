@@ -1,9 +1,13 @@
-export function installSyntheticPeer(page) {
-  return page.addInitScript(() => {
-    let sequence = 0; window.syntheticEvents = [];
+export function installSyntheticPeer(page, options = {}) {
+  return page.addInitScript(({ duplicateEvents = false, toolPreamble = false }) => {
+    let sequence = 0, eventSequence = 0; window.syntheticEvents = [];
     class Channel extends EventTarget {
       readyState = 'connecting'; user = '';
-      emit(value) { this.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(value) })); }
+      emit(value) {
+        const data = JSON.stringify({ event_id: `synthetic-${++eventSequence}`, ...value });
+        this.dispatchEvent(new MessageEvent('message', { data }));
+        if (duplicateEvents) this.dispatchEvent(new MessageEvent('message', { data }));
+      }
       close() { this.readyState = 'closed'; }
       send(raw) {
         const event = JSON.parse(raw); window.syntheticEvents.push(event);
@@ -14,6 +18,10 @@ export function installSyntheticPeer(page) {
           const id = `response-${++sequence}`;
           this.emit({ type: 'response.created', response: { id, metadata: event.response.metadata } });
           if (event.response.tool_choice?.name === 'search_trump_news') {
+            if (toolPreamble) {
+              this.emit({ type: 'response.output_text.delta', response_id: id, item_id: `${id}-preamble`, delta: 'Lookup preamble: hi again. ' });
+              this.emit({ type: 'response.output_text.done', response_id: id, item_id: `${id}-preamble`, text: 'Lookup preamble: hi again. ' });
+            }
             this.emit({ type: 'response.done', response: { id, status: 'completed', output: [{ type: 'function_call', name: 'search_trump_news', call_id: id, arguments: JSON.stringify({ query: this.user }) }] } });
             return;
           }
@@ -35,5 +43,5 @@ export function installSyntheticPeer(page) {
       close() { this.connectionState = 'closed'; }
     };
     navigator.mediaDevices.getUserMedia = () => { throw new Error('Text mode must not access the microphone'); };
-  });
+  }, options);
 }

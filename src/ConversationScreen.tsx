@@ -111,7 +111,7 @@ export default function ConversationScreen({ person, topic, onBack, onFinish, on
         <label><span>나의 관심사 <small>선택</small></span><input value={config.learnerContext} maxLength={500} onChange={e => change('learnerContext', e.target.value)} placeholder="예: 컴퓨터공학, 여행, AI" /></label>
       </fieldset>
       <p className="evaluation-privacy">첫 음성 재생 시 모델·실행 파일을 다운로드합니다. 이후에는 브라우저 캐시를 사용합니다. 영어 음성만 지원합니다.</p>
-      <div className="mvp-tip"><AssetImage src={devdayAsset('emoji-objects.svg')} alt="" /><p>AI가 말할 때도 끼어들 수 있어요.<br />이어폰을 사용하면 더 자연스러워요.</p></div>
+      <div className="mvp-tip"><AssetImage src={devdayAsset('emoji-objects.svg')} alt="" /><p>답변을 준비하면 마이크가 꺼져요.<br />다시 말하려면 마이크를 켜 주세요.</p></div>
       <label className="evaluation-consent"><input type="checkbox" checked={config.evaluateAudio} disabled={locked} onChange={e => setConfig(c => ({ ...c, evaluateAudio: e.target.checked }))} />종료 후 발음·유창성 음성 평가</label>
       <p className="evaluation-privacy">평가를 켜면 마이크 음성을 메모리에 임시 보관하고 종료 후 최대 90초의 발화 표본을 OpenAI로 전송합니다. 끄면 텍스트만 평가합니다.</p>
       <button className="feedback-button" onClick={feedback} disabled={!state.connected}>✦ 지금까지의 영어 표현 피드백 받기</button>
