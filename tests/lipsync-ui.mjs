@@ -8,158 +8,241 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto((process.env.TEST_URL || 'http://localhost:5174') + '/#conversation');
   await page.locator('.mvp-lipsync').waitFor();
-  const result = await page.evaluate(async () => {
+  const frames = await page.evaluate(async () => {
     const { MuseTalkClient } = await import('/src/lipsync/client.ts');
-    const OriginalSocket = window.WebSocket;
-    const sockets = [];
+    const OriginalSocket = window.WebSocket, OriginalAudio = window.AudioContext;
+    const originalDecode = window.createImageBitmap;
+    const sockets = [], decoded = [], active = [];
+    let clock = 0.4, holdNext = false, releaseDecode;
+    const check = (condition, message) => { if (!condition) throw new Error(message); };
+    const waitFor = async predicate => {
+      const end = performance.now() + 2000;
+      while (!predicate()) {
+        if (performance.now() > end) throw new Error('Video test condition timed out');
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    };
     class FakeSocket extends EventTarget {
-      constructor(url) {
-        super(); this.url = url; this.bufferedAmount = 0; this.sent = []; this.closed = false;
+      constructor() {
+        super(); this.bufferedAmount = 0; this.sent = []; this.closed = false;
         sockets.push(this);
-        setTimeout(() => {
-          if (!this.closed) this.dispatchEvent(new Event('open'));
-        }, 0);
+        setTimeout(() => { if (!this.closed) this.dispatchEvent(new Event('open')); }, 0);
       }
-      send(data) {
-        this.sent.push(data);
-        const total = this.sent.filter(item => item instanceof ArrayBuffer).reduce((sum, item) => sum + item.byteLength, 0);
-        if (data instanceof ArrayBuffer && total >= 12800 && !this.firstChunkSent) {
-          this.firstChunkSent = true; void this.respond(0);
-        }
-        if (typeof data === 'string' && JSON.parse(data).type === 'end') {
-          setTimeout(() => { if (!this.closed) void this.respond(1); }, 450);
-        }
-      }
+      send(data) { this.sent.push(data); }
       close() {
         if (this.closed) return;
         this.closed = true;
-        this.dispatchEvent(new Event('close'));
-        this.onclose?.();
+        this.dispatchEvent(new Event('close')); this.onclose?.();
       }
-      async respond(sequence) {
-        const bytes = this.sent.filter(data => data instanceof ArrayBuffer);
-        const audio = new Uint8Array(bytes.reduce((count, data) => count + data.byteLength, 0));
-        let offset = 0;
-        for (const data of bytes) { audio.set(new Uint8Array(data), offset); offset += data.byteLength; }
-        const packet = (header, payload) => {
-          const json = new TextEncoder().encode(JSON.stringify(header));
-          const output = new Uint8Array(4 + json.length + payload.length);
-          new DataView(output.buffer).setUint32(0, json.length, false);
-          output.set(json, 4); output.set(payload, 4 + json.length);
-          return output.buffer;
-        };
-        const frame = document.createElement('canvas'); frame.width = 32; frame.height = 32;
-        const drawing = frame.getContext('2d'); drawing.fillStyle = '#e02020'; drawing.fillRect(0, 0, 32, 32);
-        const jpeg = new Uint8Array(await (await new Promise(resolve => frame.toBlob(resolve, 'image/jpeg'))).arrayBuffer());
-        const section = audio.slice(sequence * 12800, (sequence + 1) * 12800);
-        this.onmessage?.({ data: packet({ type: 'audio', pts: sequence * 0.4, samples: section.byteLength / 2 }, section) });
-        for (let i = 0; i < 10; i++) {
-          this.onmessage?.({ data: packet({ type: 'frame', pts: sequence * 0.4 + i / 25, frame_index: sequence * 10 + i }, jpeg) });
-        }
-        if (sequence === 1) {
-          this.onmessage?.({ data: JSON.stringify({ type: 'complete' }) });
-          this.close();
-        }
-      }
+      receive(data) { this.onmessage?.({ data }); }
     }
     window.WebSocket = FakeSocket;
-    const stage = document.querySelector('.mvp-video');
+    window.AudioContext = class { constructor() { throw new Error('Video must not create an audio playback context'); } };
+    window.createImageBitmap = async (...args) => {
+      const image = await originalDecode(...args);
+      decoded.push(image);
+      if (holdNext) { holdNext = false; await new Promise(resolve => { releaseDecode = resolve; }); }
+      return image;
+    };
+    const packet = (header, payload) => {
+      const json = new TextEncoder().encode(JSON.stringify(header));
+      const output = new Uint8Array(4 + json.length + payload.length);
+      new DataView(output.buffer).setUint32(0, json.length, false);
+      output.set(json, 4); output.set(payload, 4 + json.length);
+      return output.buffer;
+    };
+    const jpeg = async color => {
+      const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
+      const context = canvas.getContext('2d'); context.fillStyle = color; context.fillRect(0, 0, 32, 32);
+      return new Uint8Array(await (await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'))).arrayBuffer());
+    };
+    const blue = await jpeg('#1020ee'), green = await jpeg('#10dd20'), red = await jpeg('#ee1020');
     const canvas = document.querySelector('.mvp-lipsync');
-    const active = [], progress = [], audioStates = [];
-    const client = new MuseTalkClient('ws://mock.test/stream', value => {
-      active.push(value); stage.classList.toggle('has-lipsync', value);
-    });
+    const client = new MuseTalkClient('ws://mock.test/stream', value => active.push(value));
     client.attachCanvas(canvas);
+    const send = (socket, index, payload) => socket.receive(packet({ type: 'frame', frame_index: index, pts: index / 25 }, payload));
     try {
-      await client.resume();
-      const context = client.context;
-      context.onstatechange = () => audioStates.push(context.state);
-      const samples = Float32Array.from({ length: 17640 }, (_, i) => Math.sin(i / 8) * 0.2);
-      let starts = 0;
-      await Promise.race([
-        client.play(samples, 22050, () => true, () => { starts++; }, value => progress.push(value)),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('MuseTalk playback timed out')), 8000)),
-      ]);
-      const pixel = [...canvas.getContext('2d').getImageData(16, 16, 1, 1).data];
-      const first = sockets[0];
-      const firstBytes = first.sent.filter(data => data instanceof ArrayBuffer).reduce((sum, data) => sum + data.byteLength, 0);
-      const pending = client.play(new Float32Array(32000), 16000, () => true, () => {}, () => {});
-      await new Promise(resolve => setTimeout(resolve, 100));
-      client.stop(); await pending;
-      return { active, starts, progress: progress.at(-1), pixel, firstBytes, audioStates,
-        start: JSON.parse(first.sent[0]), firstClosed: first.closed, interruptedClosed: sockets[1].closed,
-        visibleAfter: stage.classList.contains('has-lipsync') };
-    } finally { client.dispose(); window.WebSocket = OriginalSocket; }
+      const done = client.play(new Float32Array(88200), 22050, () => true, () => clock);
+      await waitFor(() => sockets[0]?.sent.some(value => typeof value === 'string' && JSON.parse(value).type === 'end'));
+      const socket = sockets[0];
+      const bytes = socket.sent.filter(value => value instanceof ArrayBuffer).reduce((sum, value) => sum + value.byteLength, 0);
+      check(bytes === 128000, 'PCM must be resampled to 16k and uploaded ahead of playback');
+      socket.receive(packet({ type: 'audio', samples: 999 }, new Uint8Array([1])));
+      send(socket, 10, blue);
+      await waitFor(() => client.session?.lastFrame === 10);
+      check(active.at(-1) === true, 'Video must start even if frame zero was dropped');
+
+      clock = 0.8;
+      await waitFor(() => active.at(-1) === false);
+      const before = decoded.length;
+      send(socket, 0, new Uint8Array([1]));
+      await new Promise(resolve => setTimeout(resolve, 30));
+      check(decoded.length === before, 'Stale JPEG must be discarded before decoding');
+      send(socket, 20, green); send(socket, 22, red);
+      await waitFor(() => client.session?.lastFrame === 20 && client.session.frames.has(22));
+      check(canvas.getContext('2d').getImageData(16, 16, 1, 1).data[1] > 150, 'Future frame must not display early');
+      clock = 0.9;
+      await waitFor(() => client.session?.lastFrame === 22);
+
+      clock = 1; holdNext = true;
+      send(socket, 25, blue);
+      await waitFor(() => releaseDecode);
+      const held = decoded.at(-1);
+      for (let index = 26; index < 200; index++) send(socket, index, green);
+      check(client.session.frames.size + client.session.pending.size <= 12, 'Packet and bitmap queues must stay bounded');
+      clock = 2; releaseDecode(); releaseDecode = null;
+      await waitFor(() => held.width === 0);
+      check(client.session.lastFrame === 22, 'A frame becoming stale during decode must not be drawn');
+
+      send(socket, 50, blue);
+      socket.receive(JSON.stringify({ type: 'complete' })); socket.close();
+      await waitFor(() => client.session?.lastFrame === 50);
+      clock = 4; await done;
+      check(active.at(-1) === false, 'Video must finish with the audio clock');
+
+      clock = 0;
+      const cancelled = client.play(new Float32Array(16000), 16000, () => true, () => clock);
+      await waitFor(() => sockets.length === 2);
+      holdNext = true; send(sockets[1], 0, red);
+      await waitFor(() => releaseDecode);
+      const cancelledImage = decoded.at(-1);
+      client.stop(); await cancelled;
+      const replacement = client.play(new Float32Array(16000), 16000, () => true, () => clock);
+      await waitFor(() => sockets.length === 3);
+      send(sockets[2], 0, green);
+      await waitFor(() => client.session?.lastFrame === 0);
+      releaseDecode(); releaseDecode = null;
+      await waitFor(() => cancelledImage.width === 0);
+      check(active.at(-1) === true, 'Old decoding must not hide a replacement session');
+      client.stop(); await replacement;
+      check(decoded.every(image => image.width === 0), 'All decoded bitmaps must be released');
+      return { resampledBytes: bytes, socketsClosed: sockets.every(socket => socket.closed), active };
+    } finally {
+      releaseDecode?.(); client.dispose();
+      window.WebSocket = OriginalSocket; window.AudioContext = OriginalAudio; window.createImageBitmap = originalDecode;
+    }
   });
-  assert.deepEqual(result.active.slice(0, 2), [true, false]);
-  assert.equal(result.starts, 1);
-  assert.equal(result.progress, 1);
-  assert.ok(result.pixel[0] > 150 && result.pixel[1] < 100);
-  assert.equal(result.firstBytes, 25600);
-  assert.ok(result.audioStates.includes('suspended') && result.audioStates.includes('running'));
-  assert.deepEqual(result.start, { type: 'start', format: 'pcm_s16le', sample_rate: 16000, channels: 1 });
-  assert.equal(result.firstClosed, true);
-  assert.equal(result.interruptedClosed, true);
-  assert.equal(result.visibleAfter, false);
+  assert.equal(frames.resampledBytes, 128000);
+  assert.equal(frames.socketsClosed, true);
   assert.deepEqual(errors, []);
-  const fallback = await page.evaluate(async () => {
+
+  const playback = await page.evaluate(async () => {
     const { PiperSpeech } = await import('/src/piper/speech.ts');
-    const OriginalSocket = window.WebSocket;
-    window.WebSocket = class extends EventTarget {
-      constructor() { super(); setTimeout(() => this.dispatchEvent(new Event('error')), 0); }
-      close() { this.dispatchEvent(new Event('close')); this.onclose?.(); }
+    const OriginalSocket = window.WebSocket, OriginalAudio = window.AudioContext;
+    const results = [];
+    const check = (condition, message) => { if (!condition) throw new Error(message); };
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const packet = (header, payload) => {
+      const json = new TextEncoder().encode(JSON.stringify(header));
+      const output = new Uint8Array(4 + json.length + payload.length);
+      new DataView(output.buffer).setUint32(0, json.length, false);
+      output.set(json, 4); output.set(payload, 4 + json.length);
+      return output.buffer;
     };
-    const voice = new PiperSpeech();
-    const audio = document.createElement('audio');
-    const notices = [], noop = () => {};
-    voice.attachAudio(audio);
-    voice.attachVideo(document.querySelector('.mvp-lipsync'));
-    voice.configure('wasm', { status: noop, notice: message => notices.push(message), backend: noop,
-      progress: noop, playbackBlocked: noop, playbackStarted: noop, playback: noop, videoActive: noop });
+    window.AudioContext = class { constructor() { throw new Error('Video must not replace local Piper audio'); } };
     try {
-      const pcm = Float32Array.from({ length: 4800 }, (_, i) => Math.sin(i / 8) * 0.2);
-      let started = 0;
-      await voice.play({ pcm, sampleRate: 16000 }, () => true, () => started++, noop);
-      return { started, blob: audio.src.startsWith('blob:'), notice: notices.at(-1) };
-    } finally { voice.dispose(); window.WebSocket = OriginalSocket; }
+      for (const mode of ['late', 'error', 'busy', 'silent', 'no-open', 'blocked', 'interrupt']) {
+        const sockets = [], notices = [], progress = [], blocked = [], timers = [];
+        let started = 0, playbackStarts = 0, plays = 0, playingEvents = 0, midPauses = 0, active = true;
+        let startedAt = null, videoAtAudioTime = null, inputRms = null, receivedBytes = 0;
+        const audio = document.createElement('audio');
+        const originalPlay = audio.play.bind(audio);
+        audio.play = () => {
+          plays++;
+          if (mode === 'blocked' && plays === 1) return Promise.reject(new DOMException('blocked', 'NotAllowedError'));
+          return originalPlay();
+        };
+        audio.addEventListener('playing', () => { playingEvents++; });
+        audio.addEventListener('pause', () => { if (startedAt !== null && !audio.ended && active) midPauses++; });
+        class FakeSocket extends EventTarget {
+          constructor() {
+            super(); this.sent = []; this.bufferedAmount = 0; this.closed = false; sockets.push(this);
+            videoAtAudioTime = audio.currentTime;
+            check(!audio.paused, 'Video must only start after audio playback starts');
+            if (mode !== 'no-open') timers.push(setTimeout(() => {
+              if (this.closed) return;
+              this.dispatchEvent(new Event('open'));
+              if (mode === 'busy') this.onmessage?.({ data: JSON.stringify({ type: 'error', message: 'Worker busy' }) });
+            }, 0));
+          }
+          send(data) {
+            this.sent.push(data);
+            if (data instanceof ArrayBuffer) receivedBytes += data.byteLength;
+            if (typeof data !== 'string' || JSON.parse(data).type !== 'end') return;
+            const bytes = this.sent.filter(value => value instanceof ArrayBuffer);
+            let squares = 0, samples = 0;
+            for (const chunk of bytes) {
+              const view = new DataView(chunk);
+              for (let offset = 0; offset < chunk.byteLength; offset += 2) { squares += (view.getInt16(offset, true) / 32768) ** 2; samples++; }
+            }
+            inputRms = Math.sqrt(squares / samples);
+            if (mode === 'late' || mode === 'error') timers.push(setTimeout(() => {
+              if (this.closed) return;
+              if (mode === 'error') {
+                this.onmessage?.({ data: JSON.stringify({ type: 'error', message: 'GPU unavailable' }) });
+                this.close();
+              } else {
+                this.onmessage?.({ data: packet({ type: 'frame', frame_index: 0, pts: 0 }, new Uint8Array([1])) });
+                this.onmessage?.({ data: packet({ type: 'audio', samples: 500 }, new Uint8Array([1])) });
+                this.onmessage?.({ data: JSON.stringify({ type: 'complete' }) });
+                this.close();
+              }
+            }, 350));
+          }
+          close() {
+            if (this.closed) return;
+            this.closed = true;
+            this.dispatchEvent(new Event('close')); this.onclose?.();
+          }
+        }
+        window.WebSocket = FakeSocket;
+        const voice = new PiperSpeech(), noop = () => {};
+        voice.attachAudio(audio); voice.attachVideo(document.querySelector('.mvp-lipsync'));
+        voice.configure('wasm', { status: noop, notice: value => notices.push(value), backend: noop, progress: noop,
+          playbackBlocked: value => blocked.push(value), playbackStarted: () => playbackStarts++, playback: noop, videoActive: noop });
+        let timeout;
+        try {
+          const pcm = Float32Array.from({ length: 17640 }, (_, index) => Math.sin(index / 8) * 0.5);
+          const began = performance.now();
+          const done = voice.play({ pcm, sampleRate: 22050 }, () => active, () => {
+            started++; startedAt = performance.now();
+          }, value => progress.push(value));
+          if (mode === 'blocked') {
+            await sleep(70);
+            check(blocked.includes(true) && sockets.length === 0, 'Blocked audio must not submit a video job');
+            await voice.resume();
+          }
+          if (mode === 'interrupt') {
+            await sleep(250); active = false; voice.interrupt();
+          }
+          await Promise.race([done, new Promise((_, reject) => {
+            timeout = setTimeout(() => reject(new Error('Audio waited for video in mode ' + mode)), 2500);
+          })]);
+          const elapsedMs = performance.now() - began;
+          check(started === 1 && playbackStarts === 1 && playingEvents === 1, 'Audio must play exactly once in mode ' + mode);
+          check(plays === (mode === 'blocked' ? 2 : 1), 'Video must not restart audio in mode ' + mode);
+          check(midPauses === 0, 'Video must not pause audio in mode ' + mode);
+          check(sockets.length === 1 && sockets[0].closed, 'Audio completion must cancel unfinished video in mode ' + mode);
+          check(audio.src.startsWith('blob:') || mode === 'interrupt', 'Piper must remain the audio source');
+          if (mode !== 'interrupt') {
+            check(audio.ended && progress.at(-1) === 1, 'Audio must finish independently in mode ' + mode);
+            check(startedAt - began < 500, 'Audio start must not wait for GPU');
+            check(performance.now() - startedAt < 1600, 'Audio duration must not grow with video latency');
+            const wav = new DataView(await (await fetch(audio.src)).arrayBuffer());
+            check(wav.getUint32(40, true) / 2 === pcm.length, 'Full original utterance must play without offset/restart');
+            if (inputRms !== null) check(inputRms > 0.085 && inputRms < 0.115, 'Existing voice normalization must be retained');
+          }
+          if (mode === 'error' || mode === 'busy') check(notices.some(value => value.includes('음성은 계속')), 'Video errors must be reported without stopping audio');
+          else check(notices.length === 0, 'Late or cancelled video must not report an audio failure');
+          results.push({ mode, elapsedMs: Math.round(elapsedMs), plays, started, midPauses, videoAtAudioTime, receivedBytes });
+        } finally {
+          clearTimeout(timeout); timers.forEach(clearTimeout); voice.dispose();
+        }
+      }
+      return results;
+    } finally { window.WebSocket = OriginalSocket; window.AudioContext = OriginalAudio; }
   });
-  assert.equal(fallback.started, 1);
-  assert.equal(fallback.blob, true);
-  assert.match(fallback.notice, /MuseTalk 영상 연결에 실패/);
-  const partialFallback = await page.evaluate(async () => {
-    const { PiperSpeech } = await import('/src/piper/speech.ts');
-    const voice = new PiperSpeech();
-    const audio = document.createElement('audio');
-    const notices = [], progress = [], noop = () => {};
-    let starts = 0, playbackStarts = 0, normalizedRms = 0;
-    voice.attachAudio(audio);
-    voice.attachVideo(document.querySelector('.mvp-lipsync'));
-    voice.configure('wasm', { status: noop, notice: message => notices.push(message), backend: noop,
-      progress: noop, playbackBlocked: noop, playbackStarted: () => playbackStarts++, playback: noop, videoActive: noop });
-    voice.museTalk.play = async (pcm, _sampleRate, _current, started, reportProgress) => {
-      normalizedRms = Math.sqrt(pcm.reduce((sum, value) => sum + value * value, 0) / pcm.length);
-      started(); reportProgress(0.5);
-      throw new Error('Stream interrupted halfway');
-    };
-    try {
-      const pcm = Float32Array.from({ length: 12800 }, (_, i) => Math.sin(i / 8) * 0.5);
-      await voice.play({ pcm, sampleRate: 16000 }, () => true, () => starts++, value => progress.push(value));
-      const wav = new DataView(await (await fetch(audio.src)).arrayBuffer());
-      let sumSquares = 0;
-      for (let offset = 44; offset < wav.byteLength; offset += 2) sumSquares += (wav.getInt16(offset, true) / 32768) ** 2;
-      return { starts, playbackStarts, normalizedRms, progress, notice: notices.at(-1),
-        remainingSamples: wav.getUint32(40, true) / 2, fallbackRms: Math.sqrt(sumSquares / ((wav.byteLength - 44) / 2)) };
-    } finally { voice.dispose(); }
-  });
-  assert.equal(partialFallback.starts, 1);
-  assert.equal(partialFallback.playbackStarts, 1);
-  assert.equal(partialFallback.remainingSamples, 6400);
-  assert.ok(partialFallback.normalizedRms > 0.09 && partialFallback.normalizedRms < 0.11);
-  assert.ok(Math.abs(partialFallback.normalizedRms - partialFallback.fallbackRms) < 0.002);
-  assert.equal(partialFallback.progress.at(-1), 1);
-  assert.ok(partialFallback.progress.length > 4, 'fallback captions should keep updating during playback');
-  assert.ok(partialFallback.progress.every((value, index, values) => index === 0 || value >= values[index - 1]));
-  assert.match(partialFallback.notice, /MuseTalk 영상 연결에 실패/);
   assert.deepEqual(errors, []);
-  console.log('PASS: MuseTalk PCM/JPEG playback, delayed chunks, interruption, normalized audio and partial Piper fallback.');
+  console.log(JSON.stringify(playback, null, 2));
+  console.log('PASS: audio-first playback, stale-frame dropping, bounded decoding, video failures, autoplay resume and interruption.');
 } finally { await browser.close(); }

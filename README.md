@@ -93,7 +93,8 @@ Vercel Functions의 평가 캐시와 요청 제한은 실행 인스턴스의 메
 ## Piper 트럼프 음성
 
 실제 대화 화면의 OpenAI TTS를 로컬 `piper_trump_inference`의 ONNX 모델로 교체했습니다.
-흐름은 **마이크 → OpenAI Realtime(STT·답변 텍스트·RAG) → 브라우저 Piper → MuseTalk 영상·음성 → 스피커**입니다. MuseTalk 연결에 실패하면 Piper 음성으로 계속합니다.
+음성 흐름은 **마이크 → OpenAI Realtime(STT·답변 텍스트·RAG) → 브라우저 Piper → 스피커**입니다.
+MuseTalk는 동일한 합성 음성을 별도로 받아 영상만 표시합니다. 영상 지연이나 연결 실패로 음성을 멈추거나 재시작하지 않습니다.
 Google TTS 키는 사용하지 않습니다. 립싱크에는 별도의 MuseTalk GPU 서버가 필요합니다.
 
 ### MuseTalk 립싱크 연결
@@ -115,6 +116,9 @@ python -m src.realtime.stream_server --repo /path/to/MuseTalk --video samples/in
 HTTPS 배포에서는 브라우저가 접근할 수 있는 `wss://` 주소가 필요하며, 이 변수를 Vite 빌드 환경과
 API 서버 환경에 모두 지정해야 합니다. 서버가 없거나 응답하지 않으면 영상 대신 정적 이미지와
 Piper 음성으로 대화를 이어갑니다. MuseTalk 서버는 현재 한 발화씩 처리합니다.
+영상은 실제 음성 재생 시각을 기준으로 표시하고, 2프레임(25fps 기준 약 80ms)의 허용 범위를 지난 프레임은 디코딩 전후에 버립니다.
+맞는 프레임이 없으면 정적 이미지로 돌아가며, 음성이 끝나거나 중단되면 남은 영상 요청도 닫습니다.
+GPU 생성이 실시간보다 느리면 영상이 거의 보이지 않을 수 있습니다. 이 동작은 영상 대기로 인한 음성 끊김만 제거하며, 기존 문장별 Piper 합성 방식은 바꾸지 않습니다.
 동봉된 트럼프 샘플 영상에는 방송 자막과 화면 녹화 표시가 포함되어 있으므로 최종 시연에는 깨끗한 25fps 아바타 영상으로 교체하세요.
 
 필요한 로컬 파일:
