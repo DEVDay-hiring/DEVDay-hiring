@@ -201,14 +201,13 @@ export function createApiApp({ env = process.env, development = false, port = 30
         input: {
           transcription: {
             model: "gpt-4o-mini-transcribe",
-            prompt: "English conversation practice. Terms may include Trump, Artificial Intelligence (AI), Super Intelligence (SI), S I. Preserve the speaker's actual wording, including Korean when spoken.",
           },
           noise_reduction: { type: "near_field" },
           turn_detection: {
             type: "semantic_vad",
             eagerness: "medium",
             create_response: false,
-            interrupt_response: true,
+            interrupt_response: false,
           },
         },
       },

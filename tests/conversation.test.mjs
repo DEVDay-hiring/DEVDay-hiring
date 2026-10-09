@@ -11,7 +11,7 @@ function setup(search = async () => ({ resultCount: 1, results: [{ filename: "so
   return { c, sent, muted, sources };
 }
 function created(c, id, epoch = c.epoch) {
-  c.handle({ type: "response.created", response: { id, metadata: { turn_epoch: String(epoch) } } });
+  c.handle({ type: "response.created", response: { id, metadata: { turn_epoch: String(epoch), request_id: c.pending?.requestId } } });
 }
 function done(c, id, output = [], status = "completed") {
   c.handle({ type: "response.done", response: { id, status, output } });

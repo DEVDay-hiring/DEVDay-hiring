@@ -90,7 +90,10 @@ test('Realtime session preserves STT and RAG but requests text without OpenAI TT
       assert.equal(response.status, 201);
       assert.deepEqual(session.output_modalities, ['text']); assert.equal(session.audio.output, undefined);
       assert.equal(session.audio.input.transcription.model, 'gpt-4o-mini-transcribe');
+      assert.equal(session.audio.input.transcription.prompt, undefined);
+      assert.equal(session.audio.input.transcription.language, undefined);
       assert.equal(session.audio.input.turn_detection.create_response, false);
+      assert.equal(session.audio.input.turn_detection.interrupt_response, false);
       assert.equal(session.tools[0].name, 'search_trump_news');
     });
   } finally { globalThis.fetch = realFetch; }

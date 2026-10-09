@@ -13,6 +13,7 @@ export class RealtimeClient {
     this.voice = voice;
     this.snapshot = initial(); this.listeners = new Set(); this.generation = 0;
     this.transcribed = new Set(); this.audio = null; this.lastAutoMutedResponseId = null;
+    this.bufferedText = new Map(); this.ignoredVoiceItems = new Set();
   }
   getSnapshot = () => this.snapshot;
   subscribe = listener => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
@@ -126,7 +127,7 @@ export class RealtimeClient {
           if (this.voice) { if (muted) this.voice.interrupt(); }
           else if (this.audio) this.audio.muted = muted;
         },
-        status: status => { if (current()) this.update({ status: status === 'ready' && this.voice?.busy ? this.snapshot.voiceStatus : status }); },
+        status: status => { if (current()) this.conversationStatus(status); },
         log: event => { if (current()) this.log(event); },
         error: error => { if (current()) this.update({ error }); },
         sources: result => {
@@ -172,12 +173,33 @@ export class RealtimeClient {
       this.fail(message || '연결하지 못했습니다. 서버와 네트워크를 확인해 주세요.');
     }
   }
+  conversationStatus(status) {
+    // Close the mic before synthesis as well as playback, so buffered noise
+    // cannot start another turn while the answer is being prepared.
+    if (status === 'thinking') this.setMicMuted(true);
+    this.update({ status: status === 'ready' && this.voice?.busy ? this.snapshot.voiceStatus : status });
+  }
   handle(event, controller) {
     if (!event.type.endsWith('.delta')) this.log(event);
+    if (event.type === 'input_audio_buffer.speech_started' && this.snapshot.micMuted
+        && !controller.voiceItems?.has(event.item_id)) this.ignoredVoiceItems.add(event.item_id);
+    if (this.ignoredVoiceItems.has(event.item_id)) {
+      if (event.type === 'input_audio_buffer.committed'
+          || event.type === 'conversation.item.input_audio_transcription.completed'
+          || event.type === 'conversation.item.input_audio_transcription.failed') controller.discardInput(event.item_id);
+      return;
+    }
     const wasSpeaking = this.voice?.busy;
     const responseCurrent = event.response && controller.isCurrent(event.response.id);
+    const responseFinished = event.response && controller.finishedResponses?.has(event.response.id);
     const accepted = controller.handle(event);
+    if (event.type === 'response.done' && responseCurrent && !responseFinished && event.response.status !== 'completed') {
+      this.markInterrupted(wasSpeaking); this.voice?.interrupt(); this.update({ voiceStatus: 'idle' });
+    }
+    if (event.type === 'response.done' && !accepted) this.bufferedText.delete(event.response.id);
+    if (!accepted) return;
     if (event.type === 'input_audio_buffer.speech_started') {
+      this.bufferedText.clear();
       this.capture?.speechStart(event.item_id);
       this.markInterrupted(wasSpeaking);
       this.update({ error: '', voiceStatus: 'idle' });
@@ -186,27 +208,38 @@ export class RealtimeClient {
       this.capture?.speechStop(event.item_id);
       this.stoppedSpeaking = performance.now();
     }
-    if (event.type === 'conversation.item.input_audio_transcription.delta') this.message(event.item_id, 'user', event.delta, true, true);
+    // Publish a voice turn only after the complete transcript passes validation.
     if (event.type === 'conversation.item.input_audio_transcription.completed') {
       this.message(event.item_id, 'user', event.transcript || '(인식된 음성 없음)');
       if (!this.transcribed.has(event.item_id)) {
         this.transcribed.add(event.item_id); this.update({ turns: this.snapshot.turns + 1 });
       }
     }
-    if (event.type === 'conversation.item.input_audio_transcription.failed') this.update({ error: '음성을 확인하지 못해 답변하지 않았어요. 영어로 다시 말씀해 주세요.' });
     if (event.type === 'conversation.item.truncated') this.update({ messages: this.snapshot.messages.map(m => m.id === event.item_id ? { ...m, interrupted: true, partial: false } : m) });
-    if (event.type === 'response.done' && responseCurrent && event.response.status !== 'completed') {
-      this.markInterrupted(wasSpeaking); this.voice?.interrupt(); this.update({ voiceStatus: 'idle' });
+    if (['response.output_audio_transcript.delta', 'response.output_audio_transcript.done', 'response.output_text.delta', 'response.output_text.done'].includes(event.type)) {
+      if (controller.shouldDeferText?.(event.response_id)) {
+        const buffered = this.bufferedText.get(event.response_id) || [];
+        buffered.push(event); this.bufferedText.set(event.response_id, buffered);
+      } else this.publishOutput(event);
     }
-    if (!accepted) return;
+    if (event.type === 'response.done') {
+      const buffered = this.bufferedText.get(event.response.id) || [];
+      this.bufferedText.delete(event.response.id);
+      const hasTools = event.response.output?.some(item => item.type === 'function_call');
+      if (responseCurrent && event.response.status === 'completed' && !hasTools) {
+        for (const output of buffered) this.publishOutput(output);
+        this.voice?.finish(event.response.id);
+      }
+    }
+    if (event.type === 'output_audio_buffer.started' && this.stoppedSpeaking) {
+      this.update({ latencyMs: Math.round(performance.now() - this.stoppedSpeaking) }); this.stoppedSpeaking = null;
+    }
+  }
+  publishOutput(event) {
     if (['response.output_audio_transcript.delta', 'response.output_text.delta'].includes(event.type)) this.message(event.item_id, 'assistant', event.delta, true, true);
     if (['response.output_audio_transcript.done', 'response.output_text.done'].includes(event.type)) this.message(event.item_id, 'assistant', event.transcript || event.text || '');
     if (event.type === 'response.output_text.delta') this.voice?.append(event.item_id, event.response_id, event.delta);
     if (event.type === 'response.output_text.done') this.voice?.completeItem(event.item_id, event.response_id, event.text || '');
-    if (event.type === 'response.done' && responseCurrent && event.response.status === 'completed') this.voice?.finish(event.response.id);
-    if (event.type === 'output_audio_buffer.started' && this.stoppedSpeaking) {
-      this.update({ latencyMs: Math.round(performance.now() - this.stoppedSpeaking) }); this.stoppedSpeaking = null;
-    }
   }
   text(text, prompted = false) {
     text = text.trim().slice(0, 2000);
@@ -214,6 +247,7 @@ export class RealtimeClient {
     if (containsKorean(text)) { this.update({ error: KOREAN_INPUT_NOTICE }); return false; }
     if (!this.controller.speaking) this.markInterrupted(this.voice?.busy);
     if (!this.controller.text(text)) { this.update({ error: '말씀을 마친 뒤 텍스트를 보내 주세요.' }); return false; }
+    this.bufferedText.clear();
     const id = 'local-' + crypto.randomUUID();
     this.message(id, 'user', text);
     if (prompted) this.update({ messages: this.snapshot.messages.map(m => m.id === id ? { ...m, prompted: true } : m) });
@@ -249,6 +283,7 @@ export class RealtimeClient {
     this.release(); this.update({ connected: false, status: 'ended', messages, needsPlayback: false, voiceStatus: 'idle', voiceProgress: '', speechCue: null }); return this.snapshot;
   }
   release() {
+    this.bufferedText.clear(); this.ignoredVoiceItems.clear();
     this.capture?.discard(); this.capture = null;
     this.generation++;
     this.voice?.dispose();
