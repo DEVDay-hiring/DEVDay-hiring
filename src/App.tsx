@@ -191,12 +191,10 @@ function App() {
         <Suspense fallback={<div className="screen-loading" role="status">화면을 불러오는 중...</div>}>
           {screen === 'onboarding' ? (
             <button className="onboarding-click" type="button" onPointerEnter={warmSelection} onFocus={warmSelection} onClick={() => navigate('select')} aria-label="시작하기: 인물 선택 화면으로 이동">
-              <span className="hackathon-label">DevDay Exchange Community Hackathon : Seoul</span>
               <span className="onboarding-logo"><Brand large /></span>
               <span className="onboarding-subtitle">유명 인물과 현실처럼 영어로 대화하며<br />회화 실력을 키우는 <strong>AI 회화 서비스</strong></span>
               <AssetImage className="onboarding-art" fetchPriority="high" sizes="(max-width: 799px) 100vw, 57vw" src={asset('onboarding-people.webp')} alt="마주 앉아 대화하는 두 사람" />
               <span className="onboarding-fade" aria-hidden="true" />
-              <span className="team-label">팀명: 하이링<br />소속: 숭실대학교 멋쟁이사자처럼</span>
               <span className="click-label">화면을 눌러주세요</span>
             </button>
           ) : screen === 'select' ? (

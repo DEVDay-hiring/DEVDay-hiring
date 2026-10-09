@@ -60,26 +60,33 @@ export class PiperSpeech {
     this.stopAudio()
     const audio = this.audio
     if (!audio || !current()) return Promise.resolve()
-    this.url = URL.createObjectURL(new Blob([wav(result.pcm, result.sampleRate)], { type: 'audio/wav' }))
+    this.url = URL.createObjectURL(new Blob([wav(normalizeSpeech(result.pcm), result.sampleRate)], { type: 'audio/wav' }))
     audio.srcObject = null; audio.src = this.url; audio.muted = false
     return new Promise((resolve, reject) => {
       let began = false, settled = false
+      let progressFrame = 0
       const cleanup = () => {
-        audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); audio.removeEventListener('playing', playing); audio.removeEventListener('timeupdate', timeupdate)
+        cancelAnimationFrame(progressFrame)
+        audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); audio.removeEventListener('playing', playing)
         this.cancelPlayback = undefined
       }
       const ended = () => { if (settled) return; settled = true; reportProgress(1); cleanup(); resolve() }
       const failed = () => { if (settled) return; settled = true; cleanup(); reject(new Error('음성을 재생하지 못했습니다.')) }
-      const timeupdate = () => {
-        if (!current() || !Number.isFinite(audio.duration) || audio.duration <= 0) return
-        reportProgress(Math.max(0, Math.min(1, audio.currentTime / audio.duration)))
+      const updateProgress = () => {
+        if (!current() || audio.paused || audio.ended) return
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          const leadSeconds = 0.06
+          reportProgress(Math.max(0, Math.min(1, (audio.currentTime + leadSeconds) / audio.duration)))
+        }
+        progressFrame = requestAnimationFrame(updateProgress)
       }
       const playing = () => {
         if (!current() || began) return
         began = true; this.hooks.playbackBlocked(false); started(); this.hooks.playbackStarted(); reportProgress(0)
+        progressFrame = requestAnimationFrame(updateProgress)
       }
       this.cancelPlayback = ended
-      audio.addEventListener('ended', ended); audio.addEventListener('error', failed); audio.addEventListener('playing', playing); audio.addEventListener('timeupdate', timeupdate)
+      audio.addEventListener('ended', ended); audio.addEventListener('error', failed); audio.addEventListener('playing', playing)
       void audio.play().catch(error => {
         if (!current()) { ended(); return }
         if (error.name === 'NotAllowedError') this.hooks.playbackBlocked(true)
@@ -87,6 +94,30 @@ export class PiperSpeech {
       })
     })
   }
+}
+
+function normalizeSpeech(pcm: Float32Array): Float32Array {
+  const silenceFloor = 0.01
+  const targetRms = 0.1 // -20 dBFS over active speech samples
+  const maxGain = 4
+  const peakLimit = 0.92
+  let sumSquares = 0
+  let activeSamples = 0
+  let peak = 0
+
+  for (const sample of pcm) {
+    const amplitude = Math.abs(sample)
+    peak = Math.max(peak, amplitude)
+    if (amplitude >= silenceFloor) {
+      sumSquares += sample * sample
+      activeSamples++
+    }
+  }
+  if (!activeSamples || peak === 0) return pcm
+
+  const rms = Math.sqrt(sumSquares / activeSamples)
+  const gain = Math.min(targetRms / rms, maxGain, peakLimit / peak)
+  return Float32Array.from(pcm, sample => sample * gain)
 }
 
 function wav(pcm: Float32Array, sampleRate: number): ArrayBuffer {

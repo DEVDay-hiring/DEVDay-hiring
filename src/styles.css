@@ -24,13 +24,11 @@ button:focus-visible { outline: 4px solid #103da8; outline-offset: 4px; }
 
 .onboarding-click { display: block; position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; text-align: left; color: inherit; }
 .onboarding-click > * { position: absolute; }
-.hackathon-label { left: 52px; top: 42px; z-index: 2; font-size: 32px; font-weight: 700; letter-spacing: -.96px; line-height: 1.5; color: rgba(0,0,0,.8); }
 .onboarding-logo { left: 111px; top: 227px; z-index: 2; }
 .onboarding-subtitle { left: 121px; top: 506px; z-index: 2; font-size: 36px; font-weight: 500; letter-spacing: -1.08px; line-height: 1.5; }
 .onboarding-subtitle strong { font-weight: 700; }
 .onboarding-art { left: 813px; top: 250px; width: 1082px; height: 811px; object-fit: cover; pointer-events: none; }
 .onboarding-fade { left: 813px; top: 749px; width: 1082px; height: 321px; background: linear-gradient(to bottom, rgba(243,247,255,0), rgba(243,247,255,.85) 55%, #f3f7ff); pointer-events: none; }
-.team-label { left: 52px; top: 943px; z-index: 2; font-size: 28px; font-weight: 500; line-height: 1.5; letter-spacing: -.84px; color: rgba(0,0,0,.6); }
 .click-label { left: 858px; top: 909px; z-index: 2; font-size: 28px; font-weight: 700; letter-spacing: -.84px; line-height: 1.5; }
 
 .selection-logo { position: absolute; left: 73px; top: 44px; z-index: 4; padding: 0; border: 0; background: none; }
@@ -92,14 +90,12 @@ button:focus-visible { outline: 4px solid #103da8; outline-offset: 4px; }
   .stage { position: relative; left: auto; top: auto; width: 100%; height: auto; min-height: 100dvh; transform: none !important; }
   .onboarding-click { position: relative; min-height: 100dvh; padding: 30px 24px 28px; overflow: hidden; }
   .onboarding-click > * { position: relative; left: auto; top: auto; }
-  .hackathon-label { display: block; font-size: clamp(14px, 3.7vw, 20px); letter-spacing: -.4px; }
   .onboarding-logo { display: block; margin: 12vh 0 0; }
   .brand-large { font-size: clamp(70px, 19vw, 130px); letter-spacing: -4px; line-height: 1.2; }
   .onboarding-subtitle { display: block; margin-top: 12px; font-size: clamp(18px, 4.7vw, 28px); letter-spacing: -.6px; line-height: 1.5; }
   .onboarding-subtitle br { display: none; }
   .onboarding-art { display: block; width: 116%; height: auto; margin: 3vh -8% 0; object-fit: contain; }
   .onboarding-fade { position: absolute; left: 0; top: auto; bottom: 60px; width: 100%; height: 130px; }
-  .team-label { display: block; margin-top: -1vh; font-size: 14px; line-height: 1.5; }
   .click-label { display: block; margin-top: 16px; color: #2563eb; font-size: 16px; }
 
   .selection { display: flex; flex-direction: column; gap: 0; padding: 22px 20px 36px; overflow: hidden; }
