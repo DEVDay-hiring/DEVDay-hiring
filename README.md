@@ -1,285 +1,176 @@
-# Hi:Ring DevDay
+# Hi:Ring 🎙️
 
-React·TypeScript·Vite 화면과 로컬 Express 서버를 함께 실행하는 영어 회화 MVP입니다.
-`Final`의 OpenAI Realtime·Vector Store RAG·발화 평가를 통합하고 기존 WebP·반응형 이미지·로컬 폰트를 사용합니다.
+> **Talk to anyone. In English.**  
+> 만나기 어려운 인물과의 대화를 통해 영어 공부를 **‘해야 하는 일’에서 ‘하고 싶은 대화’로** 바꾸는 몰입형 AI 영어회화 서비스
 
-## 해커톤 사전 준비 공개
+**Codex Community Korea Hackathon Seoul 2026 · 교육·학습 트랙**  
+[GitHub Repository](https://github.com/DEVDay-hiring/DEVDay-hiring) · [Live Demo](https://dev-day-hiring.vercel.app/)
 
-이 저장소의 첫 커밋에는 해커톤 시작 전에 준비한 기존 작업물이 포함됩니다. 행사 시작 시점의 사전 구현 범위는 다음과 같습니다.
+## 프로젝트 소개
 
-- 온보딩·인물 선택·실시간 영어 대화·평가·대화 기록 화면과 반응형 에셋
-- OpenAI Realtime 대화, Vector Store 자료 검색, 발화 평가를 위한 로컬/Vercel API
-- 브라우저에서 실행하는 Piper 음성 합성과 팀이 준비한 트럼프 AI 데모용 합성 음성 추론 모델
-- 로컬 개발 서버, 배포 설정, 자동화된 검증 코드
+영어회화 실력 향상에는 꾸준히 직접 말하는 연습이 중요하지만, 기존 서비스에서는 반복적인 주제와 낮은 몰입감 때문에 대화를 지속할 동기가 부족할 수 있습니다.
 
-행사 당일 새로 구현하거나 개선한 기능과 검증 결과는 이후 커밋 및 최종 제출 자료에 따로 기록합니다.
+Hi:Ring은 **“그 인물에게 직접 물어보고 싶은 질문”**을 영어 발화의 출발점으로 삼았습니다. 사용자는 인물을 선택하고, 해당 인물의 화법과 관련 자료를 반영한 AI 페르소나와 실시간으로 대화합니다. 해커톤 MVP에서는 **트럼프를 모티브로 한 가상의 AI 기자회견**을 구현했습니다.
 
-### 외부 자산과 출처
+> 본 서비스의 인물 대화와 음성·영상은 AI로 제작된 시뮬레이션이며, 실제 인물의 발언이나 공식 입장을 의미하지 않습니다.
 
-- React, Vite, TypeScript, Express: 애플리케이션·서버 구현용 라이브러리이며 버전은 `package.json`에 기록되어 있습니다.
-- OpenAI Realtime, Vector Store, 평가 API: 대화·자료 검색·발화 평가에 사용합니다. API 키와 Vector Store ID는 저장소에 포함하지 않습니다.
-- Piper 음성 실행기: `@diffusionstudio/piper-wasm` 및 ONNX Runtime Web을 사용합니다. Piper 원본 프로젝트와 라이선스는 [USAGE.txt](piper_trump_inference/USAGE.txt)에 기록했습니다.
-- 트럼프 AI 데모 음성은 실제 녹음이 아닌 합성 음성입니다. 추론 모델 파일은 저장소에 포함되어 있으며, 학습 데이터의 출처와 재배포 권한은 `USAGE.txt` 안내에 따라 별도 확인이 필요합니다.
-- 화면용 이미지와 폰트의 라이선스 안내는 저장소의 에셋 설명 및 `public/fonts/OFL.txt`에 기록되어 있습니다.
+## 주요 기능
 
-## 개발 실행
+| 기능 | 설명 |
+| --- | --- |
+| 실시간 영어 대화 | OpenAI Realtime API와 WebRTC를 이용한 음성·텍스트 대화, 자막, 사용자 끼어들기 처리 |
+| 인물 맥락 기반 응답 | 페르소나 프롬프트와 Vector Store 자료 검색을 결합한 맥락형 답변 |
+| 인물 음성 합성 | 학습된 Piper ONNX 모델을 브라우저에서 실행해 AI 답변을 음성으로 재생 |
+| 사진 기반 립싱크 | 음소·발음 길이·음성 세기·재생 시각에 맞춰 입 주변 이미지를 변경 |
+| 영어 발화 피드백 | 발음·유창성·정확성·복잡성 평가 및 대화 기록 JSON 내보내기 |
 
-Node.js 20.19 이상(22 계열은 22.12 이상)이 필요합니다.
+현재 실제 대화 페르소나는 Trump AI 한 종류입니다. 다른 인물 및 동화 캐릭터는 향후 확장 방향입니다.
+
+## 시스템 아키텍처
+
+```text
+사용자 마이크 / 텍스트
+        │
+        ▼
+OpenAI Realtime API (WebRTC)
+  ├─ 발화 이해 및 대화 맥락 관리
+  ├─ 페르소나 프롬프트
+  └─ Vector Store 자료 검색 (서버 API)
+        │
+        ▼
+    AI 응답 텍스트
+        │
+        ▼
+Piper TTS (ONNX Runtime Web / Web Worker)
+  ├─ 브라우저 WebGPU·WASM/CPU 추론
+  └─ 음성 PCM + 음소 길이 정보
+        │
+        ├────────► 스피커 재생
+        │
+        └────────► 사진 기반 Viseme 립싱크
+                      (오디오 재생 시각 동기화)
+```
+
+- **Frontend:** React, TypeScript, Vite
+- **Backend:** Node.js, Express, Vercel Functions
+- **Conversation & Knowledge:** OpenAI Realtime API, WebRTC, OpenAI Vector Store
+- **Speech:** Piper, ONNX Runtime Web, `@diffusionstudio/piper-wasm`, Web Worker
+- **Lip Sync:** 음소 기반 Viseme 매핑, PCM 분석, 사진 패치 합성
+- **Testing & Deployment:** Node.js Test Runner, Playwright, Vercel
+
+### 인물 페르소나와 지식 검색
+
+대화의 **말투·응답 스타일**은 페르소나 프롬프트로 제어하고, **사실 관계와 관련 이슈**는 Vector Store에 저장된 자료를 검색해 답변에 참고합니다. 팀은 트럼프의 X 게시글과 공개 발언·뉴스 자료를 수집해 페르소나의 맥락을 구성했습니다. 단, 공개 저장소에는 수집 원본과 크롤러의 전체 실행·적재 과정이 포함되어 있지 않아 데이터 수집 파이프라인 자체를 재현하려면 별도 자료가 필요합니다. 실시간 웹 검색이 아니라 **사전에 업로드한 자료 검색**입니다.
+
+## 시행착오와 기술적 의사결정
+
+### 1. GPT-SoVITS → Piper: 음성 품질보다 중요한 실시간성
+
+**시도:** Hugging Face에서 트럼프 연설 음성 데이터셋을 확보하고 GPT-SoVITS를 학습했습니다. 음색 재현은 만족스러웠지만, 팀의 CPU 추론 환경에서는 한 번의 음성 생성에 **약 10초**가 걸려 대화의 흐름이 끊겼습니다.
+
+**개선:** Piper 기반 음성 모델을 별도로 학습하고 ONNX 추론 형태로 전환했습니다. 최종 서비스에서는 `piper_trump_inference/`의 모델을 브라우저로 내려받아 **Web Worker + ONNX Runtime Web**으로 실행합니다. 지원 환경에서는 WebGPU를 사용하고, 그렇지 않으면 WASM/CPU로 동작합니다. Realtime이 만든 답변을 문장 단위로 합성하며, 사용자가 끼어들면 재생·합성 대기열을 중단합니다.
+
+**배운 점:** 음성의 유사도뿐 아니라 **첫 응답까지의 지연, 실행 환경, 대화 중단 처리**가 실시간 음성 UX의 핵심이라는 점을 확인했습니다.
+
+### 2. MuseTalk → 사진 기반 Viseme: 영상 생성 대신 오디오 동기화
+
+**시도:** MuseTalk를 사용해 생성된 음성에 맞춘 실시간 얼굴 영상을 구현하려 했습니다. 그러나 별도의 CUDA/GPU 영상 서버가 필요하고, 영상 생성이 실제 음성 재생 속도를 따라가지 못하면 프레임이 늦게 도착하는 문제가 있었습니다.
+
+**개선:** 최종 기본 모드는 GPU 영상 생성을 사용하지 않는 **사진 기반 립싱크**입니다.
+
+1. Piper ONNX 모델의 `phoneme_durations` 출력으로 **음소별 발음 길이**를 확보합니다.
+2. `shared/visemes.js`에서 **아·에·이·오·우 계열 모음**, `m/b/p` 입 닫음, 복합 모음을 입 모양 그룹으로 매핑합니다.
+3. 입 모양별 이미지 패치와 **40ms PCM 음성 세기**를 조합해 벌림 정도를 정합니다.
+4. `audio.currentTime`을 기준으로 **현재 재생 중인 음성에 해당하는 입 모양**만 표시합니다. 무음·중단 시에는 입을 닫습니다.
+
+원본 사진 전체를 매번 바꾸지 않고 **입 주변 패치**만 교체하므로 배경과 얼굴의 나머지 부분이 흔들리지 않습니다. 필요한 발음 길이나 이미지가 없으면 기본 3단계 입 모양으로 대체합니다. MuseTalk 연동 코드는 선택적 실험 모드로 남겨두었습니다.
+
+**배운 점:** 실시간 서비스에서는 영상의 복잡도보다 **음성과 화면의 동기화 및 안정적인 재생**이 우선일 수 있습니다.
+
+### 3. 긴 답변과 끼어들기 문제
+
+초기 테스트에서 AI 답변이 지나치게 길고 사용자가 중간에 말을 걸어도 자연스럽게 전환되지 않는 문제가 있었습니다. 이에 **짧은 답변을 유도하는 프롬프트**를 적용하고, 새로운 발화가 감지되면 이전 응답·자료 검색·TTS 대기열을 취소하도록 처리했습니다.
+
+## 로컬 실행
+
+### 요구 사항
+
+- **Node.js 20.19 이상** 또는 **22.12 이상**
+- npm, OpenAI API 키
+- 마이크를 사용할 수 있는 브라우저 (localhost 또는 HTTPS)
+
+### 설치 및 실행
 
 ```bash
+git clone https://github.com/DEVDay-hiring/DEVDay-hiring.git
+cd DEVDay-hiring
 npm ci
-# .env.local이 없다면 생성합니다. 기존 설정 파일은 덮어쓰지 않습니다.
-cp -n .env.example .env.local
+cp .env.example .env.local
+```
+
+`.env.local`에 다음 값을 설정합니다.
+
+```dotenv
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_VECTOR_STORE_ID=your_vector_store_id
+VITE_LIPSYNC_MODE=photo
+```
+
+`OPENAI_VECTOR_STORE_ID`는 자료 검색을 사용할 때 필요하며, 미설정 상태에서도 일반 대화는 가능합니다. API 키는 **서버 전용**이므로 `VITE_` 접두사를 붙이지 않습니다.
+
+```bash
 npm run dev
 ```
 
-브라우저에서 **http://localhost:5174**를 엽니다. 프론트와 API, Vite 자동 갱신을 같은 포트에서 제공합니다.
-포트가 사용 중이면 자동 변경하지 않고 오류를 표시합니다. 이미 켜둔 이전 Vite 서버는 종료하고 다시 실행하세요.
+브라우저에서 **http://localhost:5174** 접속. `predev` 과정에서 Piper 모델과 브라우저 실행 파일이 자동 준비됩니다. 최초 음성 실행 시 모델 다운로드가 필요할 수 있습니다.
 
-`.env.local`에 아래 서버 설정을 입력하고 서버를 다시 실행합니다.
-
-```dotenv
-OPENAI_API_KEY=
-OPENAI_VECTOR_STORE_ID=
-```
-
-- `OPENAI_API_KEY`: OpenAI 대화·자료 검색·평가에 사용할 키입니다. `VITE_` 접두사를 붙이지 않습니다.
-- `OPENAI_VECTOR_STORE_ID`: 자신의 OpenAI 계정에 자료를 업로드한 Vector Store ID입니다. 다른 프로젝트의 ID를 기본값으로 사용하지 않습니다.
-- 키가 없으면 화면은 열리지만 실제 대화 시작 시 설정 안내가 나타납니다.
-- Vector Store ID가 없으면 일반 대화는 가능하며, 자료 검색 시 설정 안내가 나타납니다.
-- 마이크 인식과 답변 생성은 OpenAI Realtime, 답변 음성은 브라우저 Piper가 담당합니다. 기본 립싱크는 음성 세기에 따라 로컬 입 모양 사진을 교체하며, GPU 서버가 필요하지 않습니다.
-
-서버는 환경변수 → `.env.local` → `.env` 순서로 설정을 읽습니다. 상세 모델·포트 설정은 `.env.example`에 있습니다.
-루트 프로젝트는 `Final` 디렉터리 없이 실행할 수 있습니다. `Final/`은 참고용으로 Git 추적에서 제외합니다.
-
-## 빌드 실행
+### 빌드 및 테스트
 
 ```bash
-npm start
+npm run check    # TypeScript 및 서버 구문 검사
+npm test         # 단위 테스트
+npm run build    # 프로덕션 빌드
+npm start        # 빌드 후 로컬 실행 (기본 포트 3001)
 ```
 
-빌드 후 **http://localhost:3001**에서 실행합니다. 이미 빌드한 상태에서는 `npm run serve`를 사용할 수 있습니다.
-`PORT=3002 npm start`처럼 포트를 지정할 수 있습니다. 서버는 로컬 접속 주소 `127.0.0.1`에서 실행합니다.
+브라우저 UI 테스트는 `npm run test:browser`, `npm run test:piper-ui`, `npm run test:photo-lipsync-ui` 등을 사용할 수 있습니다. 실제 OpenAI API를 호출하는 경우 비용이 발생합니다.
 
-## Vercel 배포
-
-`vercel.json`은 Vite 빌드(`npm run build`, 출력 `dist`)와 API Functions를 함께 구성합니다.
-프론트의 `/api/health`, `/api/session`, `/api/knowledge/search`, `/api/evaluation` 요청은
-`api/`의 진입점에서 `server/app.mjs`의 공통 Express API로 전달됩니다. Functions는 로컬 포트를 열거나 `dist` 파일을 읽지 않습니다.
-
-Vercel 프로젝트의 Root Directory는 저장소 루트, Framework Preset은 Vite로 지정합니다.
-Settings → Environment Variables에서 Production에 다음 값을 등록하고 재배포합니다.
-
-```dotenv
-OPENAI_API_KEY=
-OPENAI_VECTOR_STORE_ID=
-# 별칭·커스텀 도메인을 쓰거나 시스템 환경변수를 비활성화했다면 추가합니다.
-APP_ORIGIN=https://frontend-web-pied-six.vercel.app
-```
-
-키에 `VITE_` 접두사를 붙이지 않습니다. `.env.local`과 `Final/.env.example`은 Vercel 런타임 설정이 아닙니다.
-필요하면 `.env.example`의 모델 이름도 서버 환경변수로 등록합니다.
-배포·프로젝트·브랜치 도메인은 Vercel 시스템 환경변수에서 자동 허용하며, 무관한 도메인은 허용하지 않습니다.
-`APP_ORIGIN`에는 실제 사용하는 커스텀 도메인 또는 별칭 하나를 설정합니다.
-
-배포 후 `/api/health`가 JSON을 반환하는지 확인합니다. 200이지만 `apiKeyConfigured: false`이면
-Vercel의 OpenAI 키 설정이 필요한 상태입니다. 404는 API가 배포되지 않은 상태이고,
-HTML 응답은 API가 프론트 정적 페이지로 잘못 전달된 상태입니다.
-클라이언트는 이 상태들을 구분하여 안내합니다.
-
-Vercel Functions의 평가 캐시와 요청 제한은 실행 인스턴스의 메모리에서만 유지됩니다.
-새 인스턴스나 재배포 사이에 공유되는 영구 저장소는 아닙니다.
-
-## Piper 트럼프 음성
-
-실제 대화 화면의 OpenAI TTS를 로컬 `piper_trump_inference`의 ONNX 모델로 교체했습니다.
-음성 흐름은 **마이크 → OpenAI Realtime(STT·답변 텍스트·RAG) → 브라우저 Piper → 스피커**입니다.
-입 모양은 동일한 합성 음성과 실제 오디오 재생 시각을 따라갑니다. 이미지 로딩이나 영상 서버 지연 때문에 음성을 멈추거나 재시작하지 않습니다.
-Google TTS 키는 사용하지 않습니다. 사진 립싱크에는 별도의 서버나 키가 필요하지 않습니다.
-
-### 사진 립싱크 (기본값)
-
-`VITE_LIPSYNC_MODE=photo`가 기본값입니다. 기존 `VITE_MUSETALK_WS_URL` 설정이 남아 있어도 사진 모드에서는 GPU 서버에 연결하거나 음성을 전송하지 않습니다.
-브라우저에서 합성 PCM의 40ms 구간별 세기로 입 벌림 정도를 계산하고, `audio.currentTime`에 맞춰 사진을 표시합니다.
-과거 프레임을 쌓지 않고 현재 시각의 사진만 그리며, 무음·일시정지 시 입을 닫고 발화 종료·중단 시 기본 사진으로 돌아갑니다.
-사진이 늦게 로딩되거나 실패해도 원래 Piper 음성은 그대로 재생합니다. MuseTalk 영상 생성이나 별도의 음성 인식은 사용하지 않습니다.
-기존 문장별 Piper 합성 대기나 첫 모델 다운로드 지연은 별개입니다.
-
-발음 정보는 영어 철자 추측이 아닌, 해당 Piper 발화의 음소 ID와 모델이 사용한 발음 길이에서 얻습니다.
-`scripts/piper-durations.mjs`가 빌드 때 ONNX의 기존 `w_ceil` 중간값을 `phoneme_durations` 출력으로 노출합니다.
-원본 ONNX 파일·가중치·음성 계산 경로는 그대로 두고 생성된 배포 파일만 바꾸며, 모델 캐시 버전도 자동 갱신합니다.
-발음 길이로 오디오 정렬을 만드는 근거는 [Piper의 VITS 추론 코드](https://github.com/rhasspy/piper/blob/master/src/python/piper_train/vits/models.py#L634)입니다.
-
-`shared/visemes.js`는 아·에·이·오·우 계열, `m/b/p` 입 닫음, 복합 모음을 시각적 입 모양으로 묶습니다.
-`PhotoLipSync`의 `PhotoAvatar.vowels`에 각 모음의 `[조금 열림, 크게 열림]` 사진을 지정하면 음소 형태와 음성 세기를 조합합니다.
-모음 경계는 최대 70ms 구간에서 입 주변만 섞으며 머리·배경 픽셀은 고정합니다. 무음은 모음보다 우선합니다.
-타이밍 정보나 특정 모음 이미지가 없으면 기본 세 단계 입 모양을 사용합니다.
-
-`src/assets/photo-podium/`은 사용자가 제공한 750×450 연단 사진으로 만든 13개 입 모양입니다.
-닫힌 입 전체 사진 한 장과 67×51 입 주변 조각 12장(기본 벌림 2개 + 모음 5종 × 벌림 2개)을 사용합니다(총 약 263KB).
-전체 배경을 반복 다운로드하지 않으며, 서로 다른 사진의 머리·눈·배경을 섞지 않습니다.
-이미지 편집은 사용자 승인하에 `gpt-image-2` API로 에셋 준비 시에만 진행했습니다. 대화·빌드·배포 중에는 이미지 API 비용이나 추가 키가 필요하지 않습니다.
-제작 프롬프트와 출처·좌표 안내는 [에셋 설명](src/assets/photo-podium/README.md)에 있습니다.
-다시 준비하려면 Pillow·OpenCV·NumPy와 원본 사진, 별도의 이미지 편집 결과가 필요합니다. Python은 에셋 준비에만 필요합니다.
-
-```bash
-python scripts/prepare-photo-visemes.py prepare
-# 생성된 프롬프트와 마스크로 이미지 편집을 진행한 다음:
-python scripts/prepare-photo-visemes.py composite
-```
-
-제공된 원본 사진의 이용·재배포 권한은 별도로 확인해야 합니다. 다른 사진으로 교체할 때는 입 위치와 기본 이미지·패치를 함께 변경하세요.
-이전 영상 캡처 에셋과 `scripts/extract-photo-avatar.py`는 참고용으로 남겨두며 현재 기본 사진 모드에서는 사용하지 않습니다.
-`VITE_LIPSYNC_MODE=off`는 정적 이미지, `musetalk`는 아래 GPU 방식입니다. Vite 환경변수이므로 로컬에서는 재시작, Vercel에서는 빌드 환경 설정 후 재배포해야 합니다.
-
-### MuseTalk 립싱크 연결
-
-먼저 `.env.local` 또는 Vercel 빌드 환경에 `VITE_LIPSYNC_MODE=musetalk`를 지정합니다.
-같은 작업 공간의 `../lip-sync-service` 스트림 서버를 MuseTalk Python 3.10/CUDA 환경에서 실행합니다.
-공식 MuseTalk 체크아웃, `models/musetalkV15`, `models/whisper`, 트럼프 아바타 영상이 필요합니다.
-
-```bash
-cd ../lip-sync-service
-python -m pip install -r requirements-streaming.txt
-python -m src.realtime.stream_server --repo /path/to/MuseTalk --video samples/input_video/avatar_25fps.mp4 --host 127.0.0.1 --port 8765
-```
-
-MuseTalk 모드의 로컬 개발 앱은 `ws://127.0.0.1:8765/stream`에 자동 연결합니다.
-원격 작업 공간이나 포트 포워딩으로 앱을 열 때는 `VITE_MUSETALK_WS_URL=/musetalk/stream`을 설정하세요.
-`npm run dev`의 WebSocket 중계가 앱과 같은 주소에서 작업 공간의 `127.0.0.1:8765`에 연결합니다.
-다른 주소를 쓸 때는
-앱의 `.env.local`에 `VITE_MUSETALK_WS_URL=ws://HOST:PORT/stream`을 설정하고 앱을 재시작합니다.
-HTTPS 배포에서는 브라우저가 접근할 수 있는 `wss://` 주소가 필요하며, 이 변수를 Vite 빌드 환경과
-API 서버 환경에 모두 지정해야 합니다. 서버가 없거나 응답하지 않으면 영상 대신 정적 이미지와
-Piper 음성으로 대화를 이어갑니다. MuseTalk 서버는 현재 한 발화씩 처리합니다.
-영상은 실제 음성 재생 시각을 기준으로 표시하고, 2프레임(25fps 기준 약 80ms)의 허용 범위를 지난 프레임은 디코딩 전후에 버립니다.
-맞는 프레임이 없으면 정적 이미지로 돌아가며, 음성이 끝나거나 중단되면 남은 영상 요청도 닫습니다.
-GPU 생성이 실시간보다 느리면 영상이 거의 보이지 않을 수 있습니다. 이 동작은 영상 대기로 인한 음성 끊김만 제거하며, 기존 문장별 Piper 합성 방식은 바꾸지 않습니다.
-동봉된 트럼프 샘플 영상에는 방송 자막과 화면 녹화 표시가 포함되어 있으므로 최종 시연에는 깨끗한 25fps 아바타 영상으로 교체하세요.
-
-필요한 로컬 파일:
+## 주요 디렉터리
 
 ```text
-piper_trump_inference/en_US-trump_ai_demo-medium.onnx
-piper_trump_inference/en_US-trump_ai_demo-medium.onnx.json
+src/                     # React UI 및 대화·립싱크 기능
+server/                  # Express API와 서버 공통 로직
+api/                     # Vercel Functions 진입점
+shared/                  # Realtime 클라이언트·Viseme 매핑
+piper_trump_inference/    # Piper ONNX 음성 추론 모델
+scripts/                  # Piper 준비·음소 길이·이미지 에셋 처리
+tests/                    # 단위·브라우저·음성·립싱크 검증
+persona.mjs              # AI 페르소나 및 대화 설정
+.env.example             # 환경변수 예시
 ```
 
-`npm run dev`와 `npm run build`는 모델·런타임을 자동으로 `public/piper/`에 준비합니다.
-수동 준비는 `npm run prepare:piper`, 모델 존재를 필수로 검사하려면
-`node scripts/prepare-piper.mjs --require-model`을 실행합니다.
-모델이 없는 환경에서도 프론트 빌드는 가능하며, 음성 시작 시 자막으로 전환됩니다.
+## 팀 소개
 
-| 선택·상황 | 처리 |
-| --- | --- |
-| GPU 우선 | WebGPU + WASM 혼합 실행. 지원하지 않는 연산은 이용자 CPU에서 실행 |
-| GPU 미지원·어댑터 없음 | 전체 WASM CPU 실행 |
-| GPU 초기화·합성 실패 | 새 Worker에서 CPU로 같은 문장 재시도. 해당 연결은 CPU 유지 |
-| CPU도 실패·모델 로딩 실패 | 음성만 중지하고 자막·텍스트 대화 유지. 재연결 시 다시 시도 |
-| CPU로 실행 | GPU를 사용하지 않고 WASM 실행 |
-| 음성 끄기 | 모델을 다운로드하지 않고 자막으로만 답변 |
-| 자동 재생 차단 | 화면의 소리 켜기 버튼으로 현재 문장 재생 재개 |
-| 사용자가 말하거나 텍스트 전송·종료 | 재생·합성 대기열 중단, 이전 응답의 늦은 결과 폐기 |
+**Team Hi:Ring** — 박동준 · 최정인 · 어나경 · 차민상
 
-모델은 **약 63.5MB**이며 발음 변환기·ONNX 런타임 파일도 필요합니다. 첫 답변 시 다운로드합니다.
-모델·설정 내용 해시를 버전 경로와 캐시 키로 사용하고, 캐시 저장이 불가능하면 캐시 없이 실행합니다.
-초기 준비 제한은 120초, 모델 초기화·합성 단계는 60초입니다. 실행 중인 합성 취소는 Worker를 종료하므로
-다음 문장에서 모델을 다시 초기화할 수 있습니다. 준비된 유휴 Worker는 연결 중 재사용합니다.
-교차 출처 격리를 요구하지 않으며 현재 앱의 WASM CPU 실행은 한 스레드입니다.
-**영어 음성만 지원**하며 한국어 설명은 자막으로 제공합니다.
+| 팀원 | 담당 역할 | 주요 기여 |
+| --- | --- | --- |
+| **박동준** | **음성 AI 모델 개발 · PM / 발표** | Hugging Face에서 확보한 트럼프 음성 데이터셋을 활용해 **Piper TTS 모델 학습** 및 인물 음성 구현 |
+| **최정인** | **풀스택 개발 · AI 시스템 통합** | 웹서비스 프론트엔드·백엔드 개발, **OpenAI Realtime API 연동**, AI 모델·기능 통합, 학습·참조 데이터 탐색 및 전처리 |
+| **어나경** | **서비스 기획 · 립싱크 개발** | 서비스 기획 및 사용자 경험 설계, **인물 립싱크 기능 구현**과 **Musetalk 모델** 실험 |
+| **차민상** | **풀스택 개발 · 페르소나/RAG** | 웹서비스 프론트엔드·백엔드 개발, 트럼프 페르소나 강화를 위한 **데이터 크롤링 및 RAG 실험** |
 
-### 배포 시 음성 에셋
+> 각 역할은 팀원이 실제 담당한 업무를 기준으로 정리했습니다. 웹서비스 개발은 최정인·차민상이 공동으로 담당했으며, 음성 합성 모델 학습과 립싱크 구현은 각각 박동준·어나경이 주도했습니다.
 
-추론용 `.onnx`·`.onnx.json`과 사용 안내 `USAGE.txt`는 저장소에 포함됩니다.
-`main`에 푸시하면 Vercel 빌드가 `public/piper/`를 생성하고 `dist/piper/`에 복사해 함께 배포합니다.
-브라우저는 사이트의 **`/piper/models/manifest.json`**에서 모델 버전을 확인하고 같은 사이트에서 모델·실행 파일을 다운로드합니다.
-외부 추론 서버나 추가 TTS 키 설정은 필요하지 않습니다.
+## 프로젝트 회고 및 확장 방향
 
-생성된 `public/piper/`와 학습 데이터·학습 메타데이터·샘플 음성·`.env.local`은 Git에서 제외됩니다.
-Vercel 빌드에서는 모델이 없으면 실패하게 하여 음성이 빠진 배포를 방지합니다.
-버전 경로의 모델·설정은 1년 캐시, manifest는 재검증하도록 설정합니다.
-모델 제공은 정적 파일 다운로드이며, 음성 합성 계산은 계속 이용자 WebGPU/WASM에서 실행됩니다.
-모델 사용 안내는 [USAGE.txt](piper_trump_inference/USAGE.txt)를 참조하세요.
+Hi:Ring은 **“어떻게 하면 영어를 더 자주 말하고 싶어질까?”**라는 질문에서 출발했습니다. 이번 MVP를 통해 실시간 AI 대화, 검색 기반 페르소나, 브라우저 음성 합성, 저비용 립싱크를 하나의 경험으로 연결했습니다.
 
-ONNX Runtime Web 1.30.0과 `@diffusionstudio/piper-wasm` 1.0.0을 사용합니다.
-실행기 설정·제삼자 코드 참고는 [독립 검증 페이지 설명](experiments/piper-browser/README.md)을 참조하세요.
+향후에는 동화 속 인물이나 애니메이션 캐릭터의 **이야기와 세계관을 활용한 어린이 영어회화**, 다양한 페르소나, 학습 콘텐츠로 확장할 수 있습니다. 단, 현재 저장소에서 실제 대화를 지원하는 페르소나는 한 종류입니다.
 
-## 화면과 기능
+## 출처 및 사용 유의사항
 
-온보딩 → 인물 선택 → 대화 → 영어 실력 평가·대화 기록 순서입니다. 현재 실제 대화는 Trump AI만 지원합니다.
-
-- 영어 수준·주제·언어 도움·합성 음성·표현 교정 설정.
-- 마이크를 연 상태에서 WebRTC로 실시간 음성 대화, 텍스트 입력, 사용자·AI 자막.
-- AI가 말할 때 끼어들면 재생과 이전 응답·자료 검색을 취소합니다.
-- 업로드 자료를 Vector Store로 검색하고 참고 자료 탭에 표시합니다. 실시간 웹 뉴스 검색은 없습니다.
-- 기본 사진 립싱크는 발화 중 음성 세기에 따라 입 모양을 교체합니다. 선택적으로 MuseTalk GPU 영상을 사용할 수 있으며, 화면은 실제 인물이 아닌 AI 시뮬레이션임을 표시합니다.
-- 연결 실패·자동 재생 차단·자료 검색 실패 안내와 재시도.
-- 종료하면 발음·유창성·정확성·복잡성을 실제 사용자 발화로 평가합니다. 텍스트만 있으면 발음·유창성은 평가하지 않습니다.
-- 자료가 부족하거나 평가가 실패하면 임의의 점수를 표시하지 않습니다. 피드백은 AI 코칭용이며 공인 시험 점수가 아닙니다.
-- 대화 기록·단어 수·발화 수·참고 자료·평가를 JSON으로 저장할 수 있습니다.
-
-실제 대화와 평가는 OpenAI API를 사용하며 비용이 발생합니다. 마이크는 localhost 또는 HTTPS에서 권한 허용이 필요합니다.
-음성 평가를 켜면 로컬 마이크의 첫 3분을 메모리에 임시 보관하고 발화 구간 최대 90초만 종료 후 전송합니다.
-음성은 파일·localStorage·다운로드 JSON에 저장하지 않습니다. 대화 기록은 메모리에 있어 새로고침하면 사라집니다.
-사용자 계정·영구 기록 저장은 아직 포함되어 있지 않습니다.
-
-## 로딩 최적화
-
-- PNG 대신 투명도를 유지하는 WebP를 사용합니다. 에셋은 약 34.69MB에서 **3.41MB**로 줄였습니다.
-- 배경·전신·카드에 여러 해상도를 제공해 화면 크기와 픽셀 밀도에 맞는 이미지를 선택합니다.
-- 대화·평가 화면 JS와 추가 CSS는 해당 화면이 필요할 때 불러옵니다.
-- 카드·이동 버튼의 마우스 오버와 키보드 포커스에서 다음 화면 코드·이미지를 미리 불러옵니다.
-- 인물 이미지를 화면 간 공유하고 이미지 디코딩을 비동기로 처리합니다.
-- Plus Jakarta Sans를 로컬 WOFF2 폰트로 제공합니다. 라이선스는 `public/fonts/OFL.txt`입니다.
-- 서버는 JS·CSS·HTML 등을 gzip으로 전송하며, 내용 해시가 붙은 `/assets/`에는 1년 캐시를 설정합니다. HTML은 재검증합니다.
-- Realtime 답변 텍스트를 문장별로 Piper에 전달합니다. 합성은 Worker에서 실행하며 모델·발음 데이터는 브라우저 캐시를 사용합니다. 검색·음성 인식·첫 모델 다운로드에 따라 응답 지연이 달라집니다.
-- 중복 평가 요청은 10분 동안 서버 메모리에서 재사용합니다.
-
-새 Figma PNG/SVG 원본을 추가할 때는 Pillow가 설치된 Python으로 변환합니다.
-
-```bash
-python3 scripts/optimize-assets.py /path/to/figma-exports
-npm run build
-```
-
-원본 PNG는 배포 디렉터리에 넣지 않습니다.
-
-## 검증
-
-```bash
-npm run check
-npm test
-npm run build
-# 별도 터미널에서 npm run serve 실행 후, Chrome이 설치된 환경에서 검사합니다.
-npm run test:browser
-npm run test:evaluation-ui
-npm run test:conversation-ui
-npm run test:piper-ui
-# npm run dev 실행 후 검사합니다. 기본 주소는 http://localhost:5174 입니다.
-npm run test:lipsync-ui
-npm run test:photo-lipsync-ui
-npm run test:photo-visemes-ui
-npm run test:viseme-piper-ui
-```
-
-단위 테스트는 API를 호출하지 않습니다. 기본 브라우저 검사는 실제 마이크와 유료 세션을 사용하지 않고
-연결 실패·재시도·빈 평가·화면 이동·모바일·이미지 로딩·코드 분리를 확인합니다.
-Piper 브라우저 검사는 실제 ONNX 모델로 GPU·CPU 음성 생성과 재생·중단·실패 복구를 확인합니다.
-이 검사에서 Realtime 연결과 RAG API는 모의 응답이며, 유료 API는 호출하지 않습니다.
-사진 립싱크 검사는 기본 세 입 모양·모음 패치 10장과 고정 배경 픽셀, 오디오 시각 추적, 로딩 실패·중단·자동 재생 복구를 확인합니다.
-실제 Piper 음성으로 데스크톱·390px/320px 모바일 화면과 안내문 겹침도 검사하며 캡처는 `test-results/photo-lipsync-*.png`에 저장합니다.
-모음 렌더러 검사는 구별 가능한 테스트용 입 이미지를 사용합니다. 별도 실제 Piper 검사는 CPU·자동 모드의 발음 시각과 PCM 길이 일치를 확인하며 유료 API를 호출하지 않습니다.
-테스트 서버 주소는 `TEST_URL=http://localhost:5174`처럼 변경할 수 있습니다.
-`LIVE_API=1 npm run test:browser`는 설정된 실제 OpenAI API와 합성 음성 입력으로 연결·RAG·끼어들기·평가를 검사하며 API 비용이 발생합니다.
-
-## 주요 파일
-
-- `server.mjs`: 로컬 개발 Vite 통합·정적 빌드 제공.
-- `server/app.mjs`, `server/origins.mjs`: 로컬과 Vercel에서 공유하는 API·도메인 허용 설정.
-- `api/`, `vercel.json`: Vercel Functions 진입점·빌드 설정.
-- `persona.mjs`: AI 페르소나와 회화 설정.
-- `evaluation.mjs`: 평가 입력 검증·기준·API 요청·결과 검증.
-- `src/piper/`, `shared/speech-queue.js`, `scripts/prepare-piper.mjs`: 브라우저 음성 합성·재생·문장 대기열·모델 준비.
-- `shared/`: WebRTC 연결, 대화 순서·중단 제어, 자료 검색 규칙, 평가용 녹음.
-- `src/ConversationScreen.tsx`, `src/SummaryScreen.tsx`, `src/AssessmentPanel.tsx`: 실제 대화와 평가 UI.
-- `src/assets/`, `src/AssetImage.tsx`: 최적화한 이미지와 반응형 로딩.
-# DEVDay-hiring
+- [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime) · [Piper](https://github.com/rhasspy/piper) · [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) · [MuseTalk](https://github.com/TMElyralab/MuseTalk)
+- [Trump Speech Dataset (Hugging Face)](https://huggingface.co/datasets/meoconxinhxan/trump-speech-dataset-tts)
+- 음성 모델·인물 이미지·외부 데이터의 이용 및 재배포 권한은 별도 확인이 필요합니다. 저장소의 `piper_trump_inference/USAGE.txt`와 각 자산 라이선스 안내를 참고하세요.
+- AI 음성·영상은 실제 인물의 공식 콘텐츠가 아닌 **합성 시뮬레이션**입니다.
